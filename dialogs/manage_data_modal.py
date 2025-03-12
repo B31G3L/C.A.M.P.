@@ -79,7 +79,27 @@ class ManageDataModal(QtWidgets.QDialog):
 
         self.ensure_data_directory()
         self.load_existing_data()
+        
+    def load_existing_data(self):
+        kapa_file = "data/kapa_data.csv"
+        if os.path.exists(kapa_file):
+            try:
+                df = pd.read_csv(kapa_file, sep=';', header=None, names=["Name", "Datum", "Stunden"], dtype=str)
+                self.display_data_in_table(df) # Hier wird die Methode aufgerufen
+            except Exception as e:
+                print(f"Fehler beim Laden von kapa_data.csv: {e}")
+        else:
+            self.table.setRowCount(0)
 
+    def display_data_in_table(self, df):
+        self.df = df
+        self.table.setRowCount(len(df))
+        for row_idx, row in df.iterrows():
+            self.table.setItem(row_idx, 0, QtWidgets.QTableWidgetItem(str(row["Name"])))
+            self.table.setItem(row_idx, 1, QtWidgets.QTableWidgetItem(str(row["Datum"])))
+            self.table.setItem(row_idx, 2, QtWidgets.QTableWidgetItem(str(row["Stunden"])))
+        self.update_entry_count()
+        
     def ensure_data_directory(self):
         """Stellt sicher, dass das 'data'-Verzeichnis existiert."""
         data_dir = "data"
@@ -151,30 +171,28 @@ class ManageDataModal(QtWidgets.QDialog):
                     print(f"Fehler beim Verarbeiten einer Zeile: {e}")
 
         return extracted_data
-
+    
     def append_to_kapa_data(self, new_data):
-        """Fügt neue Daten zu kapa_data.csv hinzu und aktualisiert die Tabelle."""
         kapa_file = "data/kapa_data.csv"
         if os.path.exists(kapa_file):
-            
             existing_df = pd.read_csv(kapa_file, sep=';', header=None, names=["Name", "Datum", "Stunden"], dtype=str)
-            combined_df = pd.concat([existing_df, new_data], ignore_index=True)
         else:
-            combined_df = new_data
+            existing_df = pd.DataFrame(columns=["Name", "Datum", "Stunden"])
 
-        combined_df.sort_values(by="Datum", ascending=True, inplace=True)
-        combined_df.to_csv(kapa_file, sep=';', index=False, header=False)
-        self.display_data_in_table(combined_df)
+        existing_df.drop_duplicates(subset=["Name", "Datum"], keep='first', inplace=True) # Duplikate entfernen
+        new_data.drop_duplicates(subset=["Name", "Datum"], keep='first', inplace=True) # Duplikate entfernen
+
+        existing_df.set_index(["Name", "Datum"], inplace=True)
+        new_data.set_index(["Name", "Datum"], inplace=True)
+
+        existing_df.update(new_data, overwrite=True)
+        existing_df = existing_df.combine_first(new_data)
+
+        existing_df.reset_index(inplace=True)
+        existing_df.sort_values(by="Datum", ascending=True, inplace=True)
+        existing_df.to_csv(kapa_file, sep=';', index=False, header=False)
+        self.display_data_in_table(existing_df)
         self.status_label.setText("Daten aktualisiert.")
-
-    def display_data_in_table(self, df):
-        self.df = df
-        self.table.setRowCount(len(df))
-        for row_idx, row in df.iterrows():
-            self.table.setItem(row_idx, 0, QtWidgets.QTableWidgetItem(str(row["Name"])))
-            self.table.setItem(row_idx, 1, QtWidgets.QTableWidgetItem(str(row["Datum"])))
-            self.table.setItem(row_idx, 2, QtWidgets.QTableWidgetItem(str(row["Stunden"])))
-        self.update_entry_count() # Hier wird die Anzahl der Einträge aktualisiert
 
     def update_entry_count(self):
         """Aktualisiert die Anzeige der Anzahl der Einträge."""
