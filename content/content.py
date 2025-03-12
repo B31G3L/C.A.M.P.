@@ -184,7 +184,7 @@ class Content(QtWidgets.QWidget):
         capacity_data = {m['name']: 0 for m in project.get('participants', [])}
         daily_availability = {m['name']: {} for m in project.get('participants', [])}
 
-        csv_path = "Buchungen/General/daten.csv"
+        csv_path = "data/kapa_data.csv" # Angepasst: kapa_data.csv
         if not os.path.exists(csv_path):
             print(f"Error: CSV file not found at {csv_path}")
             return capacity_data, daily_availability
@@ -202,38 +202,26 @@ class Content(QtWidgets.QWidget):
 
             for row in reader:
                 try:
-                    if len(row) < 12:
+                    if len(row) < 3: # Angepasst: 3 Spalten in kapa_data.csv
                         print(f"Skipping invalid row (not enough columns): {row}")
                         continue
+                                
+                    name = next((m['name'] for m in project.get('participants', []) if str(m['id']) == row[0]), None)
 
-                    participant_id = row[5] if row[5] != "Fremdleistung OPS" else row[6]
-                    name = next((m['name'] for m in project.get('participants', []) if str(m['id']) == participant_id), None)
+                    date_str = row[1] # Angepasst: Datum ist die zweite Spalte
+                    hours = float(row[2].replace(',', '.')) if row[2] else 0 # Angepasst: Stunden ist die dritte Spalte
 
-                    if not name:
-                        print(f"Warning: No matching participant for ID {participant_id}")
-                        continue
-
-                    # Process hours and ensure it's a float
                     try:
-                        hours = float(row[12].replace(',', '.')) if row[12] else 0
-                    except ValueError:
-                        print(f"Invalid hours value in row: {row[12]}")
-                        continue
-
-                    # Process entry date
-                    try:
-                        entry_date_str = row[7].strip()
-                        entry_date = datetime.strptime(entry_date_str, "%d.%m.%y")
+                        entry_date = datetime.strptime(date_str, "%d.%m.%Y")
                     except (ValueError, IndexError):
-                        print(f"Invalid date format in row: {row[7]}")
+                        print(f"Invalid date format in row: {date_str}")
                         continue
                     
-
+                    print(name)
+                    print(date_str)
+                    print(hours)
                     # Only consider data within the sprint period
                     if sprint_start <= entry_date <= sprint_end:
-                        print(sprint_start)
-                        print(entry_date)
-                        print(sprint_end)
                         capacity_data[name] += hours / 8
                         daily_availability[name][entry_date.strftime("%d.%m.%Y")]['available'] = True
                         daily_availability[name][entry_date.strftime("%d.%m.%Y")]['hours'] += hours
