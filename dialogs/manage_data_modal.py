@@ -136,37 +136,40 @@ class ManageDataModal(QtWidgets.QDialog):
         """Extrahiert Name, Datum und Gesamtstunden aus einer MIME-ähnlichen HTML-Datei."""
         rows = re.findall(r'<tr.*?>(.*?)</tr>', mime_data, re.DOTALL)
         extracted_data = []
+        
+        keywords = ["FCAST", "Forecast", "anderes_wort"]  # Liste der Schlüsselwörter
 
         for row in rows:
             cells = re.findall(r'<td.*?>(.*?)</td>', row, re.DOTALL)
             if len(cells) >= 14:  # Stellen Sie sicher, dass genügend Zellen vorhanden sind
                 try:
-                    # Name extrahieren
-                    sixth_value = re.sub(r'<.*?>', '', cells[5]).replace("&#32;", " ")
-                    if sixth_value == "Fremdleistung OPS":
-                        name = re.sub(r'<.*?>', '', cells[6]).replace("&#32;", " ")
-                    else:
-                        name = sixth_value
+                    if cells[10] and any(keyword in cells[10] for keyword in keywords): # Überprüfen Sie, ob ein Schlüsselwort vorhanden ist
+                        # Name extrahieren
+                        sixth_value = re.sub(r'<.*?>', '', cells[5]).replace("&#32;", " ")
+                        if sixth_value == "Fremdleistung OPS":
+                            name = re.sub(r'<.*?>', '', cells[6]).replace("&#32;", " ")
+                        else:
+                            name = sixth_value
 
-                    # Datum extrahieren
-                    date_cell = cells[7]
-                    date_value = re.sub(r'<.*?>', '', date_cell).strip()
-                    try:
-                        excel_date = int(float(date_value.replace(",", ".")))
-                        datetime_date = datetime(1899, 12, 30) + datetime.timedelta(days=excel_date)
-                        formatted_date = datetime_date.strftime('%d.%m.%Y')
-                    except ValueError:
-                        formatted_date = date_value
+                        # Datum extrahieren
+                        date_cell = cells[7]
+                        date_value = re.sub(r'<.*?>', '', date_cell).strip()
+                        try:
+                            excel_date = int(float(date_value.replace(",", ".")))
+                            datetime_date = datetime(1899, 12, 30) + datetime.timedelta(days=excel_date)
+                            formatted_date = datetime_date.strftime('%d.%m.%Y')
+                        except ValueError:
+                            formatted_date = date_value
 
-                    # Gesamtstunden extrahieren
-                    hours_cell = cells[12]
-                    hours_value = re.sub(r'<.*?>', '', hours_cell).strip()
-                    try:
-                        hours = float(hours_value.replace(",", "."))
-                    except ValueError:
-                        hours = hours_value
+                        # Gesamtstunden extrahieren
+                        hours_cell = cells[12]
+                        hours_value = re.sub(r'<.*?>', '', hours_cell).strip()
+                        try:
+                            hours = float(hours_value.replace(",", "."))
+                        except ValueError:
+                            hours = hours_value
 
-                    extracted_data.append((name, formatted_date, hours))
+                        extracted_data.append((name, formatted_date, hours))
                 except Exception as e:
                     print(f"Fehler beim Verarbeiten einer Zeile: {e}")
 
