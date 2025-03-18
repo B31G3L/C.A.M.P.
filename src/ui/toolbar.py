@@ -33,7 +33,7 @@ class Toolbar(ctk.CTkFrame):
         # 1. Button: "Daten anzeigen"
         self.show_data_btn = ctk.CTkButton(
             self, 
-            text="Daten anzeigen",
+            text="Daten",
             command=self._on_show_data
         )
         
