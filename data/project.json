@@ -1,0 +1,43 @@
+{
+    "projekte": [
+        {
+            "name": "BMW EC",
+            "teilnehmer": [
+                {"id": "Baier, Tobias", "name": "Tobias Baier", "rolle": "Tech-Lead"},
+                {"id": "Karim, Ahmad", "name": "Ahmad Karim", "rolle": "Tech-Lead"},
+
+                {"id": "Beigelbeck, Christian", "name": "Christian Beigelbeck", "rolle": "TLS"},
+                {"id": "Karagkiozis, Konstantinos", "name": "Konstantinos Karagkiozis", "rolle": "DEV"},
+                {"id": "Beaugrand, Moritz", "name": "Moritz Beaugrand", "rolle": "DEV/TLS"},
+                {"id": "Al Mkheibar, Abdul", "name": "Abdul Al Mkheibar", "rolle": "DEV/TLS"},
+                {"id": "Qarib, Fariba", "name": "Fariba Qarib", "rolle": "DEV"},
+                {"id": "Suciu, Victor-Traian", "name": "Victor-Traian Suciu", "rolle": "DEV"},
+                {"id": "Vrtunski, Branislav", "name": "Branislav Vrtunski", "rolle": "DEV"},
+                {"id": "Karagkiozis, Konstantinos", "name": "Konstantinos Karagkiozis", "rolle": "DEV"},
+                {"id": "DESCOSMA", "name": "Stefan Cosma", "rolle": "DEV"},
+                {"id": "DEIPERCIULEAC", "name": "Igor Perciuleac", "rolle": "DEV"},
+                {"id": "DECLACATUSU", "name": "Claudiu Lacatusu", "rolle": "DEV"}
+
+            ],
+            "sprints": [
+                {"sprint_name": "EVE R25B - Sprint 1", "nummer": 1, "start": "26.02.2025", "ende": "18.03.2025"},
+                {"sprint_name": "EVE R25B - Sprint 2", "nummer": 2, "start": "19.03.2025", "ende": "08.04.2025"},
+                {"sprint_name": "EVE R25B - Sprint 3", "nummer": 3, "start": "09.04.2025", "ende": "29.04.2025"},
+                {"sprint_name": "EVE R25B - Sprint 4", "nummer": 4, "start": "30.04.2025", "ende": "24.05.2025"}
+            ]
+        },
+        {
+            "name": "BMW OTD",
+            "teilnehmer": [
+                {"id": "Klauck, Steffen", "name": "Steffen Klauck", "rolle": "Tech-Lead"}
+            ],
+            "sprints": [
+                {"sprint_name": "OTD R25B - Sprint 1", "nummer": 1, "start": "26.02.2025", "ende": "19.03.2025"},
+                {"sprint_name": "OTD R25B - Sprint 2", "nummer": 2, "start": "19.03.2025", "ende": "09.04.2025"},
+                {"sprint_name": "OTD R25B - Sprint 3", "nummer": 3, "start": "09.04.2025", "ende": "30.04.2025"},
+                {"sprint_name": "OTD R25B - Sprint 4", "nummer": 4, "start": "30.04.2025", "ende": "25.05.2025"}
+            ]
+        }
+    ]
+   
+}

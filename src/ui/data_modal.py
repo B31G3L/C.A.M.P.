@@ -52,6 +52,7 @@ class DataModal(ctk.CTkToplevel):
         # Nach einer kurzen Verzögerung anzeigen (warten bis UI gerendert ist)
         self.after(100, self.deiconify)
     
+    
     def _create_widgets(self):
         """Erstellt alle UI-Elemente für das Modal"""
         # Titel-Frame
@@ -113,16 +114,19 @@ class DataModal(ctk.CTkToplevel):
             anchor="w"
         )
         
-        # Lösch-Info-Label
+        # Tabellen-Frame
+        self.table_frame = ctk.CTkScrollableFrame(self)
+        
+        # Lösch-Info-Frame (neu, unterhalb der Tabelle)
+        self.delete_info_frame = ctk.CTkFrame(self)
+        
+        # Lösch-Info-Label (jetzt im neuen Frame)
         self.delete_info_label = ctk.CTkLabel(
-            self.info_frame,
+            self.delete_info_frame,
             text="Keine Einträge ausgewählt",
             anchor="w",
             text_color=("gray60", "gray70")
         )
-        
-        # Tabellen-Frame
-        self.table_frame = ctk.CTkScrollableFrame(self)
         
         # Button-Frame
         self.button_frame = ctk.CTkFrame(self)
@@ -146,7 +150,10 @@ class DataModal(ctk.CTkToplevel):
             hover_color=("red4", "red3"),
             state="disabled"  # Anfangs deaktiviert
         )
-    
+
+    # 2. Jetzt passen wir das Layout an, um das delete_info_frame unter der Tabelle zu platzieren
+    # Ändere diese Methode:
+
     def _setup_layout(self):
         """Richtet das Layout der UI-Elemente ein"""
         # Titel-Frame
@@ -157,7 +164,6 @@ class DataModal(ctk.CTkToplevel):
         self.info_frame.pack(fill="x", padx=15, pady=5)
         self.file_label.pack(anchor="w", padx=10, pady=2)
         self.count_label.pack(anchor="w", padx=10, pady=2)
-        self.delete_info_label.pack(anchor="w", padx=10, pady=2)
         
         # Such-Frame
         self.search_frame.pack(fill="x", padx=15, pady=5)
@@ -166,10 +172,12 @@ class DataModal(ctk.CTkToplevel):
         self.search_button.pack(side="left", padx=5, pady=5)
         self.reset_button.pack(side="left", padx=5, pady=5)
         
-        
-        
         # Tabellen-Frame (nimmt den meisten Platz ein)
         self.table_frame.pack(fill="both", expand=True, padx=15, pady=10)
+        
+        # Lösch-Info-Frame (jetzt unter der Tabelle)
+        self.delete_info_frame.pack(fill="x", padx=15, pady=(0, 5))
+        self.delete_info_label.pack(fill="x", padx=10, pady=2)
         
         # Button-Frame
         self.button_frame.pack(fill="x", padx=15, pady=(5, 15))

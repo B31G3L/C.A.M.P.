@@ -28,6 +28,7 @@ class Toolbar(ctk.CTkFrame):
         # Richte das Layout ein
         self._setup_layout()
     
+
     def _create_widgets(self):
         """Erstellt alle UI-Elemente für die Toolbar"""
         # 1. Button: "Daten anzeigen"
@@ -37,29 +38,14 @@ class Toolbar(ctk.CTkFrame):
             command=self._on_show_data
         )
         
-        # 2. Dropdown: "Projekt bearbeiten"
-        self.project_options = ["Neues Projekt", "Projekt öffnen", "Projekt speichern", "Projekt löschen"]
-        self.project_var = ctk.StringVar(value="Projekt bearbeiten")
-        
-        self.project_menu = ctk.CTkOptionMenu(
-            self,
-            values=self.project_options,
-            variable=self.project_var,
-            command=self._on_project_option
+        # 2. Button: "CAMP Manager" (ersetzt die Dropdowns)
+        self.camp_manager_btn = ctk.CTkButton(
+            self, 
+            text="CAMP Manager",
+            command=self._on_camp_manager
         )
         
-        # 3. Dropdown: "Sprints bearbeiten"
-        self.sprint_options = ["Neuer Sprint", "Sprint bearbeiten", "Sprint abschließen"]
-        self.sprint_var = ctk.StringVar(value="Sprints bearbeiten")
-        
-        self.sprint_menu = ctk.CTkOptionMenu(
-            self,
-            values=self.sprint_options,
-            variable=self.sprint_var,
-            command=self._on_sprint_option
-        )
-        
-        # 4. Button: "Create/Copy Markup"
+        # 3. Button: "Create/Copy Markup"
         self.markup_btn = ctk.CTkButton(
             self, 
             text="Create/Copy Markup",
@@ -70,9 +56,13 @@ class Toolbar(ctk.CTkFrame):
         """Richtet das Layout der UI-Elemente ein"""
         # Alle Elemente nebeneinander anordnen
         self.show_data_btn.pack(side="left", padx=(10, 5), pady=5)
-        self.project_menu.pack(side="left", padx=5, pady=5)
-        self.sprint_menu.pack(side="left", padx=5, pady=5)
+        self.camp_manager_btn.pack(side="left", padx=5, pady=5)
         self.markup_btn.pack(side="left", padx=5, pady=5)
+
+    def _on_camp_manager(self):
+        """Wird aufgerufen, wenn der 'CAMP Manager' Button geklickt wird"""
+        if "camp_manager" in self.callbacks:
+            self.callbacks["camp_manager"]()
     
     # Event-Handler-Methoden
     
@@ -133,3 +123,26 @@ class Toolbar(ctk.CTkFrame):
         """Wird aufgerufen, wenn der 'Create/Copy Markup' Button geklickt wird"""
         if "create_markup" in self.callbacks:
             self.callbacks["create_markup"]()
+
+    def _get_toolbar_callbacks(self):
+        """
+        Erstellt ein Dictionary mit den Callback-Funktionen für die Toolbar
+        
+        Returns:
+            dict: Dictionary mit Callback-Funktionen
+        """
+        return {
+            # Button-Callbacks
+            "show_data": self._show_data,
+            "create_markup": self._create_markup,
+            "camp_manager": self._show_camp_manager,
+            
+            # Die alten Callbacks können bleiben, sie werden vom Manager-Modal verwendet
+            "new_project": self._new_project,
+            "open_project": self._open_project,
+            "save_project": self._save_project,
+            "delete_project": self._delete_project,
+            "new_sprint": self._new_sprint,
+            "edit_sprint": self._edit_sprint,
+            "complete_sprint": self._complete_sprint
+        }

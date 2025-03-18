@@ -7,6 +7,9 @@ import customtkinter as ctk
 from src.ui.toolbar import Toolbar
 from src.ui.main_view import MainView
 from src.ui.data_modal import DataModal
+from src.ui.camp_manager_modal import CAMPManagerModal
+
+
 
 class CAMPApp:
     """
@@ -79,6 +82,8 @@ class CAMPApp:
             # Button-Callbacks
             "show_data": self._show_data,
             "create_markup": self._create_markup,
+            "camp_manager": self._show_camp_manager,
+
             
             # Dropdown-Callbacks für Projekt
             "new_project": self._new_project,
@@ -165,3 +170,30 @@ class CAMPApp:
         print("Daten aktualisieren")
         # Hier später die Daten neu laden und anzeigen
         self.main_view.show_message("Daten aktualisiert")
+
+    # Füge diese Methode zur CAMPApp-Klasse hinzu:
+    def _show_camp_manager(self):
+        """Zeigt das CAMP Manager Modal an"""
+        print("CAMP Manager öffnen")
+        
+        # Erstelle und zeige das CAMP Manager-Modal
+        manager_modal = CAMPManagerModal(self.root, self._get_toolbar_callbacks())
+        
+        # Warte, bis das Modal geschlossen wird
+        self.root.wait_window(manager_modal)
+        
+        # Aktualisiere die Statusanzeige in der Hauptansicht
+        self.main_view.show_message("CAMP Manager wurde geschlossen")
+
+    def _show_camp_manager(self):
+        """Zeigt das CAMP Manager Modal an"""
+        print("CAMP Manager öffnen")
+        
+        # Erstelle und zeige das CAMP Manager-Modal
+        manager_modal = CAMPManagerModal(self.root, self._get_toolbar_callbacks())
+        
+        # Warte, bis das Modal geschlossen wird
+        self.root.wait_window(manager_modal)
+        
+        # Aktualisiere die Statusanzeige in der Hauptansicht
+        self.main_view.show_message("CAMP Manager wurde geschlossen")
