@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CAMP - Capacity Analysis & Management Planner
 
 CAMP ist ein Tool zur Verwaltung und Analyse von Projektkapazitäten und Sprints.
@@ -50,3 +51,7 @@ camp/
 ## Lizenz
 
 [MIT](LICENSE)
+=======
+# C.A.M.P.
+Capacity Analysis &amp; Management Planner
+>>>>>>> bb1cdaaf98413ea982a9a8993a453a099e2b3bd5
