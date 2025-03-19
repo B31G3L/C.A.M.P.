@@ -8,6 +8,8 @@ from src.ui.toolbar import Toolbar
 from src.ui.main_view import MainView
 from src.ui.data_modal import DataModal
 from src.ui.camp_manager_modal import CAMPManagerModal
+from src.ui.import_modal import ImportModal
+
 
 
 
@@ -81,6 +83,7 @@ class CAMPApp:
         return {
             # Button-Callbacks
             "show_data": self._show_data,
+            "import_data": self._show_import_data,
             "create_markup": self._create_markup,
             "camp_manager": self._show_camp_manager,
 
@@ -197,3 +200,17 @@ class CAMPApp:
         
         # Aktualisiere die Statusanzeige in der Hauptansicht
         self.main_view.show_message("CAMP Manager wurde geschlossen")
+
+    # Neue Methode für die CAMPApp-Klasse:
+    def _show_import_data(self):
+        """Zeigt das Import-Daten-Modal an"""
+        print("Import-Daten-Modal öffnen")
+        
+        # Erstelle und zeige das Import-Modal
+        import_modal = ImportModal(self.root, self._get_toolbar_callbacks())
+        
+        # Warte, bis das Modal geschlossen wird
+        self.root.wait_window(import_modal)
+        
+        # Aktualisiere die Statusanzeige in der Hauptansicht
+        self.main_view.show_message("Daten-Import wurde geschlossen")

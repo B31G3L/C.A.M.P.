@@ -38,14 +38,21 @@ class Toolbar(ctk.CTkFrame):
             command=self._on_show_data
         )
         
-        # 2. Button: "CAMP Manager" (ersetzt die Dropdowns)
+        # 2. Button: "Import Daten"
+        self.import_data_btn = ctk.CTkButton(
+            self, 
+            text="Import Daten",
+            command=self._on_import_data
+        )
+        
+        # 3. Button: "CAMP Manager" 
         self.camp_manager_btn = ctk.CTkButton(
             self, 
             text="CAMP Manager",
             command=self._on_camp_manager
         )
         
-        # 3. Button: "Create/Copy Markup"
+        # 4. Button: "Create/Copy Markup"
         self.markup_btn = ctk.CTkButton(
             self, 
             text="Create/Copy Markup",
@@ -56,6 +63,7 @@ class Toolbar(ctk.CTkFrame):
         """Richtet das Layout der UI-Elemente ein"""
         # Alle Elemente nebeneinander anordnen
         self.show_data_btn.pack(side="left", padx=(10, 5), pady=5)
+        self.import_data_btn.pack(side="left", padx=5, pady=5)
         self.camp_manager_btn.pack(side="left", padx=5, pady=5)
         self.markup_btn.pack(side="left", padx=5, pady=5)
 
@@ -63,7 +71,12 @@ class Toolbar(ctk.CTkFrame):
         """Wird aufgerufen, wenn der 'CAMP Manager' Button geklickt wird"""
         if "camp_manager" in self.callbacks:
             self.callbacks["camp_manager"]()
-    
+
+    def _on_import_data(self):
+        """Wird aufgerufen, wenn der 'Import Daten' Button geklickt wird"""
+        if "import_data" in self.callbacks:
+            self.callbacks["import_data"]()
+
     # Event-Handler-Methoden
     
     def _on_show_data(self):
@@ -134,6 +147,7 @@ class Toolbar(ctk.CTkFrame):
         return {
             # Button-Callbacks
             "show_data": self._show_data,
+            "import_data": self._on_import_data,
             "create_markup": self._create_markup,
             "camp_manager": self._show_camp_manager,
             

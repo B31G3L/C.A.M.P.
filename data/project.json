@@ -3,40 +3,150 @@
         {
             "name": "BMW EC",
             "teilnehmer": [
-                {"id": "Baier, Tobias", "name": "Tobias Baier", "rolle": "Tech-Lead", "fte":0.5},
-                {"id": "Karim, Ahmad", "name": "Ahmad Karim", "rolle": "Tech-Lead", "fte":1},
-
-                {"id": "Beigelbeck, Christian", "name": "Christian Beigelbeck", "rolle": "TLS", "fte":0.5},
-                {"id": "Karagkiozis, Konstantinos", "name": "Konstantinos Karagkiozis", "rolle": "DEV", "fte":1},
-                {"id": "Beaugrand, Moritz", "name": "Moritz Beaugrand", "rolle": "DEV/TLS", "fte":1},
-                {"id": "Al Mkheibar, Abdul", "name": "Abdul Al Mkheibar", "rolle": "DEV/TLS", "fte":1},
-                {"id": "Qarib, Fariba", "name": "Fariba Qarib", "rolle": "DEV", "fte":1},
-                {"id": "Suciu, Victor-Traian", "name": "Victor-Traian Suciu", "rolle": "DEV", "fte":1},
-                {"id": "Karagkiozis, Konstantinos", "name": "Konstantinos Karagkiozis", "rolle": "DEV", "fte":1},
-                {"id": "Test, Martina", "name": "fe fe", "rolle": "DEV","fte":1},
-                {"id": "DESCOSMA", "name": "Stefan Cosma", "rolle": "DEV","fte":1},
-                {"id": "DEIPERCIULEAC", "name": "Igor Perciuleac", "rolle": "DEV", "fte":1}
-
+                {
+                    "id": "Baier, Tobias",
+                    "name": "Tobias Baier",
+                    "rolle": "Tech-Lead",
+                    "fte": 0.5
+                },
+                {
+                    "id": "Karim, Ahmad",
+                    "name": "Ahmad Karim",
+                    "rolle": "Tech-Lead",
+                    "fte": 1
+                },
+                {
+                    "id": "Beigelbeck, Christian",
+                    "name": "Christian Beigelbeck",
+                    "rolle": "TLS",
+                    "fte": 0.5
+                },
+                {
+                    "id": "Karagkiozis, Konstantinos",
+                    "name": "Konstantinos Karagkiozis",
+                    "rolle": "DEV",
+                    "fte": 1
+                },
+                {
+                    "id": "Beaugrand, Moritz",
+                    "name": "Moritz Beaugrand",
+                    "rolle": "DEV/TLS",
+                    "fte": 1
+                },
+                {
+                    "id": "Al Mkheibar, Abdul",
+                    "name": "Abdul Al Mkheibar",
+                    "rolle": "DEV/TLS",
+                    "fte": 1
+                },
+                {
+                    "id": "Suciu, Victor-Traian",
+                    "name": "Victor-Traian Suciu",
+                    "rolle": "DEV",
+                    "fte": 1
+                },
+                {
+                    "id": "Karagkiozis, Konstantinos",
+                    "name": "Konstantinos Karagkiozis",
+                    "rolle": "DEV",
+                    "fte": 1
+                },
+                {
+                    "id": "Test, Martina",
+                    "name": "fe fe",
+                    "rolle": "DEV",
+                    "fte": 1
+                },
+                {
+                    "id": "DESCOSMA",
+                    "name": "Stefan Cosma",
+                    "rolle": "DEV",
+                    "fte": 1
+                },
+                {
+                    "id": "DEIPERCIULEAC",
+                    "name": "Igor Perciuleac",
+                    "rolle": "DEV",
+                    "fte": 0.5
+                },
+                {
+                    "id": "TEST",
+                    "name": "Das ist ein Test",
+                    "rolle": "DEV",
+                    "fte": 1.0
+                }
             ],
             "sprints": [
-                {"sprint_name": "EVE R25B - Sprint 1", "start": "26.02.2025", "ende": "18.03.2025", "confimed_story_points": 50, "delivered_story_points": 60},
-                {"sprint_name": "EVE R25B - Sprint 2", "start": "19.03.2025", "ende": "08.04.2025", "confimed_story_points": 50, "delivered_story_points": 60},
-                {"sprint_name": "EVE R25B - Sprint 3", "start": "09.04.2025", "ende": "29.04.2025", "confimed_story_points": 50, "delivered_story_points": 60},
-                {"sprint_name": "EVE R25B - Sprint 4", "start": "30.04.2025", "ende": "24.05.2025", "confimed_story_points": 50, "delivered_story_points": 60}
+                {
+                    "sprint_name": "EVE R25B - Sprint 1",
+                    "start": "26.02.2025",
+                    "ende": "18.03.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                },
+                {
+                    "sprint_name": "EVE R25B - Sprint 2",
+                    "start": "19.03.2025",
+                    "ende": "08.04.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                },
+                {
+                    "sprint_name": "EVE R25B - Sprint 3",
+                    "start": "09.04.2025",
+                    "ende": "29.04.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                },
+                {
+                    "sprint_name": "EVE R25B - Sprint 4",
+                    "start": "30.04.2025",
+                    "ende": "24.05.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                }
             ]
         },
         {
             "name": "BMW OTD",
             "teilnehmer": [
-                {"id": "Klauck, Steffen", "name": "Steffen Klauck", "rolle": "Tech-Lead", "fte":1}
+                {
+                    "id": "Klauck, Steffen",
+                    "name": "Steffen Klauck",
+                    "rolle": "Tech-Lead",
+                    "fte": 1
+                }
             ],
             "sprints": [
-                {"sprint_name": "OTD R25B - Sprint 1", "start": "26.02.2025", "ende": "19.03.2025", "confimed_story_points": 50, "delivered_story_points": 60},
-                {"sprint_name": "OTD R25B - Sprint 2", "start": "19.03.2025", "ende": "09.04.2025", "confimed_story_points": 50, "delivered_story_points": 60},
-                {"sprint_name": "OTD R25B - Sprint 3", "start": "09.04.2025", "ende": "30.04.2025", "confimed_story_points": 50, "delivered_story_points": 60},
-                {"sprint_name": "OTD R25B - Sprint 4", "start": "30.04.2025", "ende": "25.05.2025", "confimed_story_points": 50, "delivered_story_points": 60}
+                {
+                    "sprint_name": "OTD R25B - Sprint 1",
+                    "start": "26.02.2025",
+                    "ende": "19.03.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                },
+                {
+                    "sprint_name": "OTD R25B - Sprint 2",
+                    "start": "19.03.2025",
+                    "ende": "09.04.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                },
+                {
+                    "sprint_name": "OTD R25B - Sprint 3",
+                    "start": "09.04.2025",
+                    "ende": "30.04.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                },
+                {
+                    "sprint_name": "OTD R25B - Sprint 4",
+                    "start": "30.04.2025",
+                    "ende": "25.05.2025",
+                    "confimed_story_points": 50,
+                    "delivered_story_points": 60
+                }
             ]
         }
     ]
-   
 }
