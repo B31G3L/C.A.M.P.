@@ -13,6 +13,7 @@ import datetime
 import pandas as pd
 import re
 
+
 class DragDropFrame(ctk.CTkFrame):
     """
     Ein Frame, das Drag & Drop von Dateien ermöglicht
@@ -88,7 +89,7 @@ class DragDropFrame(ctk.CTkFrame):
         """Wird aufgerufen, wenn auf den Frame geklickt wird"""
         filetypes = [("Excel-Dateien", "*.xls *.xlsx"), ("Alle Dateien", "*.*")]
         filename = filedialog.askopenfilename(
-            title="BW Tool Datei auswählen",
+            title="Excel-Datei auswählen",
             filetypes=filetypes
         )
         
@@ -112,6 +113,325 @@ class DragDropFrame(ctk.CTkFrame):
                 f"Akzeptierte Typen: {', '.join(self.accepted_files)}",
                 parent=self.winfo_toplevel()
             )
+
+
+class ProjectMemberSelectionDialog(ctk.CTkToplevel):
+    """Dialog zur Auswahl eines Projektmitglieds"""
+    
+    def __init__(self, master, projects_data, on_select=None):
+        """
+        Initialisiert den Dialog
+        
+        Args:
+            master: Das übergeordnete Widget
+            projects_data: Die Projektdaten aus der project.json
+            on_select: Callback-Funktion, die aufgerufen wird, wenn ein Mitglied ausgewählt wird
+        """
+        super().__init__(master)
+        
+        # Fenster zunächst ausblenden
+        self.withdraw()
+        
+        # Fenster-Konfiguration
+        self.title("Projektmitglied auswählen")
+        self.geometry("500x400")
+        self.resizable(False, False)
+        self.transient(master)  # Macht das Fenster zum Modal-Fenster
+        self.grab_set()         # Blockiert Interaktion mit dem Hauptfenster
+        
+        # Attribute
+        self.projects_data = projects_data
+        self.on_select = on_select
+        self.selected_member = None
+        
+        # UI erstellen
+        self._create_widgets()
+        self._setup_layout()
+        self._load_projects()
+        
+        # Fenster zentrieren und dann anzeigen
+        self.center_window()
+        
+        # Nach einer kurzen Verzögerung anzeigen
+        self.after(100, self.deiconify)
+    
+    def _create_widgets(self):
+        """Erstellt alle UI-Elemente für den Dialog"""
+        # Titel-Label
+        self.title_label = ctk.CTkLabel(
+            self, 
+            text="Wählen Sie ein Projektmitglied aus",
+            font=ctk.CTkFont(size=16, weight="bold")
+        )
+        
+        # Projekt-Auswahl
+        self.project_frame = ctk.CTkFrame(self)
+        self.project_label = ctk.CTkLabel(
+            self.project_frame,
+            text="Projekt:",
+            width=100
+        )
+        self.project_var = ctk.StringVar(value="")
+        self.project_dropdown = ctk.CTkOptionMenu(
+            self.project_frame,
+            values=[""],
+            variable=self.project_var,
+            command=self._on_project_selected,
+            width=300
+        )
+        
+        # Mitglieder-Listen-Frame
+        self.members_label = ctk.CTkLabel(
+            self,
+            text="Projektmitglieder:",
+            anchor="w"
+        )
+        
+        # Scrollbare Liste für Mitglieder
+        self.members_list_frame = ctk.CTkScrollableFrame(
+            self,
+            width=450,
+            height=250
+        )
+        
+        # Info-Label
+        self.info_label = ctk.CTkLabel(
+            self,
+            text="",
+            text_color=("gray60", "gray70")
+        )
+        
+        # Button-Frame
+        self.button_frame = ctk.CTkFrame(self)
+        
+        # Abbrechen-Button
+        self.cancel_button = ctk.CTkButton(
+            self.button_frame,
+            text="Abbrechen",
+            command=self.destroy,
+            width=120,
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40")
+        )
+        
+        # Auswählen-Button (initial deaktiviert)
+        self.select_button = ctk.CTkButton(
+            self.button_frame,
+            text="Auswählen",
+            command=self._on_select_clicked,
+            width=120,
+            state="disabled"
+        )
+    
+    def _setup_layout(self):
+        """Richtet das Layout der UI-Elemente ein"""
+        # Titel-Label
+        self.title_label.pack(pady=(20, 15))
+        
+        # Projekt-Auswahl
+        self.project_frame.pack(fill="x", padx=20, pady=(0, 15))
+        self.project_label.pack(side="left")
+        self.project_dropdown.pack(side="left", padx=(10, 0))
+        
+        # Mitglieder-Label
+        self.members_label.pack(anchor="w", padx=20, pady=(0, 5))
+        
+        # Mitglieder-Liste
+        self.members_list_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+        
+        # Info-Label
+        self.info_label.pack(padx=20, pady=(0, 10))
+        
+        # Button-Frame
+        self.button_frame.pack(fill="x", padx=20, pady=(0, 20))
+        self.cancel_button.pack(side="left", padx=(0, 10))
+        self.select_button.pack(side="right")
+    
+    def _load_projects(self):
+        """Lädt die Projekte in das Dropdown"""
+        if not self.projects_data or "projekte" not in self.projects_data:
+            self.info_label.configure(
+                text="Keine Projekte gefunden. Bitte importieren Sie zuerst Projektdaten.",
+                text_color="red"
+            )
+            return
+        
+        # Projekte extrahieren
+        projects = self.projects_data.get("projekte", [])
+        project_names = [project.get("name", "") for project in projects if project.get("name")]
+        
+        if not project_names:
+            self.info_label.configure(
+                text="Keine gültigen Projekte gefunden.",
+                text_color="red"
+            )
+            return
+        
+        # Dropdown aktualisieren
+        self.project_var.set(project_names[0])
+        self.project_dropdown.configure(values=project_names)
+        
+        # Zeige Mitglieder des ersten Projekts
+        self._on_project_selected(project_names[0])
+    
+    def _on_project_selected(self, project_name):
+        """Wird aufgerufen, wenn ein Projekt ausgewählt wird"""
+        # Bisherige Auswahl zurücksetzen
+        self.selected_member = None
+        self.select_button.configure(state="disabled")
+        
+        # Bisherige Mitgliederliste löschen
+        for widget in self.members_list_frame.winfo_children():
+            widget.destroy()
+        
+        # Finde das ausgewählte Projekt
+        selected_project = None
+        for project in self.projects_data.get("projekte", []):
+            if project.get("name") == project_name:
+                selected_project = project
+                break
+        
+        if not selected_project:
+            self.info_label.configure(
+                text=f"Projekt '{project_name}' nicht gefunden.",
+                text_color="red"
+            )
+            return
+        
+        # Mitglieder des Projekts extrahieren
+        members = selected_project.get("teilnehmer", [])
+        
+        if not members:
+            self.info_label.configure(
+                text=f"Keine Mitglieder im Projekt '{project_name}' gefunden.",
+                text_color="red"
+            )
+            return
+        
+        # Info-Label aktualisieren
+        self.info_label.configure(
+            text=f"{len(members)} Mitglieder gefunden. Bitte wählen Sie ein Mitglied aus.",
+            text_color=("gray60", "gray70")
+        )
+        
+        # Mitglieder anzeigen
+        for i, member in enumerate(members):
+            member_id = member.get("id", "")
+            member_name = member.get("name", "")
+            member_role = member.get("rolle", "")
+            
+            # Erstelle ein Frame für den Mitgliedseintrag
+            member_frame = ctk.CTkFrame(self.members_list_frame)
+            member_frame.pack(fill="x", padx=5, pady=2)
+            
+            # Hintergrundfarbe abwechseln
+            if i % 2 == 0:
+                member_frame.configure(fg_color=("gray90", "gray20"))
+            
+            # Speichere die Mitgliedsdaten im Frame
+            member_frame.member_data = member
+            
+            # Erstelle Labels für Name und Rolle
+            name_label = ctk.CTkLabel(
+                member_frame,
+                text=member_name,
+                anchor="w",
+                width=200
+            )
+            
+            role_label = ctk.CTkLabel(
+                member_frame,
+                text=member_role,
+                anchor="w",
+                width=150
+            )
+            
+            id_label = ctk.CTkLabel(
+                member_frame,
+                text=member_id,
+                anchor="w",
+                width=100
+            )
+            
+            
+            # Platziere die Labels
+            name_label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+            role_label.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+            id_label.grid(row=0, column=2, padx=5, pady=5, sticky="w")
+            
+            member_frame.bind("<Button-1>", lambda e, f=member_frame: self._on_member_clicked(f))
+            # Doppelklick zur direkten Auswahl
+            member_frame.bind("<Double-Button-1>", lambda e, f=member_frame: self._on_member_double_click(f))
+            name_label.bind("<Button-1>", lambda e, f=member_frame: self._on_member_clicked(f))
+            name_label.bind("<Double-Button-1>", lambda e, f=member_frame: self._on_member_double_click(f))
+            role_label.bind("<Button-1>", lambda e, f=member_frame: self._on_member_clicked(f))
+            role_label.bind("<Double-Button-1>", lambda e, f=member_frame: self._on_member_double_click(f))
+            id_label.bind("<Button-1>", lambda e, f=member_frame: self._on_member_clicked(f))
+            id_label.bind("<Double-Button-1>", lambda e, f=member_frame: self._on_member_double_click(f))
+
+    def _on_member_double_click(self, member_frame):
+                """Wird aufgerufen, wenn auf ein Mitglied doppelgeklickt wird"""
+                # Wähle das Mitglied aus
+                self._on_member_clicked(member_frame)
+                
+                # Bestätige die Auswahl sofort, als würde der Auswählen-Button geklickt
+                if self.selected_member:
+                    self._on_select_clicked()     
+    
+    def _on_member_clicked(self, member_frame):
+        """Wird aufgerufen, wenn ein Mitglied angeklickt wird"""
+        # Bisherige Auswahl zurücksetzen
+        for widget in self.members_list_frame.winfo_children():
+            if hasattr(widget, 'member_data'):
+                i = list(self.members_list_frame.winfo_children()).index(widget)
+                if i % 2 == 0:
+                    widget.configure(fg_color=("gray90", "gray20"))
+                else:
+                    widget.configure(fg_color="transparent")
+        
+        # Diese Zeile als ausgewählt markieren
+        member_frame.configure(fg_color=("light blue", "dark blue"))
+        
+        # Mitgliedsdaten speichern
+        self.selected_member = member_frame.member_data
+        
+        # Auswählen-Button aktivieren
+        self.select_button.configure(state="normal")
+        
+        # Info-Label aktualisieren
+        member_name = self.selected_member.get("name", "")
+        self.info_label.configure(
+            text=f"Ausgewählt: {member_name}",
+            text_color=("gray60", "gray70")
+        )
+    
+    def _on_select_clicked(self):
+        """Wird aufgerufen, wenn der Auswählen-Button geklickt wird"""
+        if self.selected_member and self.on_select:
+            self.on_select(self.selected_member)
+        
+        # Dialog schließen
+        self.destroy()
+    
+    def center_window(self):
+        """Zentriert das Fenster auf dem Bildschirm"""
+        self.update_idletasks()
+        
+        # Fenstergröße
+        width = self.winfo_width()
+        height = self.winfo_height()
+        
+        # Bildschirmgröße
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Position berechnen
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        # Fenster positionieren
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
 
 class ImportModal(ctk.CTkToplevel):
     """
@@ -141,6 +461,10 @@ class ImportModal(ctk.CTkToplevel):
         self.callbacks = callbacks or {}
         self.selected_file = None
         self.import_status = None
+        
+        # Neue Attribute für die Arbeitszeiterfassung
+        self.ar_selected_file = None
+        self.selected_member = None
         
         # UI erstellen
         self._create_widgets()
@@ -180,10 +504,14 @@ class ImportModal(ctk.CTkToplevel):
         
         # Tabs erstellen
         self.bw_tool_tab = self.tab_view.add("BW Tool Daten")
+        self.ar_calendar_tab = self.tab_view.add("Arbeitszeiterfassung")
         self.projekt_tab = self.tab_view.add("Projektdaten")
         
         # Inhalte für BW Tool Daten-Tab
         self._create_bw_tool_tab()
+        
+        # Inhalte für Arbeitszeiterfassung-Tab
+        self._create_timesheet_tab()
         
         # Inhalte für Projektdaten-Tab
         self._create_projekt_tab()
@@ -292,6 +620,134 @@ class ImportModal(ctk.CTkToplevel):
         
         # Import-Button
         self.bw_tool_import_button.pack(fill="x", pady=(10, 0))
+    
+    def _create_timesheet_tab(self):
+        """Erstellt die Inhalte für den Arbeitszeiterfassung-Tab"""
+        # Container-Frame für den Tab
+        container = ctk.CTkFrame(self.ar_calendar_tab)
+        
+        # Info-Text
+        info_text = (
+            "Importieren Sie Arbeitszeiterfassungsdaten aus einer Excel-Datei (.xlsx, .xls).\n\n"
+            "Die Datei sollte Spalten für 'Date' und 'TotalHours' enthalten. "
+            "Da die Datei keine Mitarbeiter-ID enthält, müssen Sie einen Mitarbeiter auswählen, "
+            "dem diese Arbeitszeiten zugeordnet werden sollen."
+        )
+        
+        info_label = ctk.CTkLabel(
+            container,
+            text=info_text,
+            justify="left",
+            anchor="w",
+            wraplength=600
+        )
+        
+        # Drag & Drop Frame
+        self.ar_drop_frame = DragDropFrame(
+            container,
+            callback=self._on_ar_file_selected,
+            accepted_files=['.xlsx', '.xls']
+        )
+        
+        # Dateiauswahl-Frame (für Anzeige des ausgewählten Dateinamens)
+        file_frame = ctk.CTkFrame(container)
+        
+        # Label für ausgewählte Datei
+        file_label = ctk.CTkLabel(
+            file_frame,
+            text="Ausgewählte Datei:",
+            font=ctk.CTkFont(weight="bold"),
+            width=120
+        )
+        
+        # Anzeige des Dateinamens
+        self.ar_file_name_label = ctk.CTkLabel(
+            file_frame,
+            text="Keine Datei ausgewählt",
+            anchor="w"
+        )
+        
+        # Mitarbeiter-Auswahl-Frame
+        member_frame = ctk.CTkFrame(container)
+        
+        # Label für Mitarbeiterauswahl
+        member_label = ctk.CTkLabel(
+            member_frame,
+            text="Mitarbeiter:",
+            font=ctk.CTkFont(weight="bold"),
+            width=120
+        )
+        
+        # Anzeige des ausgewählten Mitarbeiters
+        self.selected_member_label = ctk.CTkLabel(
+            member_frame,
+            text="Kein Mitarbeiter ausgewählt",
+            anchor="w"
+        )
+        
+        # Button für Mitarbeiterauswahl
+        self.select_member_button = ctk.CTkButton(
+            member_frame,
+            text="Mitarbeiter auswählen",
+            command=self._open_member_selection,
+            width=170
+        )
+        
+        # Optionen-Frame
+        options_frame = ctk.CTkFrame(container)
+        
+        # Optionen für den Import
+        self.ar_overwrite_var = ctk.BooleanVar(value=True)
+        self.ar_overwrite_checkbox = ctk.CTkCheckBox(
+            options_frame,
+            text="Bestehende Einträge überschreiben (gleiche ID und Datum)",
+            variable=self.ar_overwrite_var
+        )
+        
+        self.ar_backup_var = ctk.BooleanVar(value=True)
+        self.ar_backup_checkbox = ctk.CTkCheckBox(
+            options_frame,
+            text="Backup erstellen",
+            variable=self.ar_backup_var
+        )
+        
+        # Import-Button
+        self.ar_import_button = ctk.CTkButton(
+            container,
+            text="Arbeitszeitdaten importieren",
+            command=self._import_ar_calendar_data,
+            font=ctk.CTkFont(weight="bold"),
+            height=40,
+            fg_color=("green3", "green4"),
+            hover_color=("green4", "green3"),
+            state="disabled"  # Initial deaktiviert
+        )
+        
+        # Layout für den Arbeitszeit-Tab
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+        info_label.pack(anchor="w", pady=(0, 15))
+        
+        # Drag & Drop Frame
+        self.ar_drop_frame.pack(fill="x", pady=(0, 15))
+        
+        # Dateiauswahl-Frame
+        file_frame.pack(fill="x", pady=(0, 15))
+        file_label.pack(side="left")
+        self.ar_file_name_label.pack(side="left", padx=10, fill="x", expand=True)
+        
+        # Mitarbeiter-Auswahl-Frame
+        member_frame.pack(fill="x", pady=(0, 15))
+        member_label.pack(side="left")
+        self.selected_member_label.pack(side="left", padx=10, fill="x", expand=True)
+        self.select_member_button.pack(side="right")
+        
+        # Optionen-Frame
+        options_frame.pack(fill="x", pady=(0, 20))
+        self.ar_overwrite_checkbox.pack(anchor="w", pady=5)
+        self.ar_backup_checkbox.pack(anchor="w", pady=5)
+        
+        # Import-Button
+        self.ar_import_button.pack(fill="x", pady=(10, 0))
     
     def _create_projekt_tab(self):
         """Erstellt die Inhalte für den Projektdaten-Tab"""
@@ -414,6 +870,22 @@ class ImportModal(ctk.CTkToplevel):
         # Status zurücksetzen
         self._show_status("", False)
     
+    def _on_ar_file_selected(self, filename):
+        """
+        Wird aufgerufen, wenn eine Arbeitszeiterfassungsdatei ausgewählt wurde
+        
+        Args:
+            filename: Pfad zur ausgewählten Datei
+        """
+        self.ar_selected_file = filename
+        self.ar_file_name_label.configure(text=os.path.basename(filename))
+        
+        # Prüfe, ob auch ein Mitarbeiter ausgewählt wurde
+        self._update_ar_import_button()
+        
+        # Status zurücksetzen
+        self._show_status("", False)
+    
     def _browse_file(self, file_type, entry_widget):
         """
         Öffnet einen Datei-Browser-Dialog
@@ -446,6 +918,53 @@ class ImportModal(ctk.CTkToplevel):
             # Status zurücksetzen
             self._show_status("", False)
     
+    def _open_member_selection(self):
+        """Öffnet den Dialog zur Auswahl eines Projektmitglieds"""
+        try:
+            # Lade die Projektdaten
+            projects_data = self._load_project_data()
+            
+            if not projects_data:
+                self._show_status("Keine Projektdaten gefunden. Bitte importieren Sie zuerst Projektdaten.", error=True)
+                return
+            
+            # Zeige den Dialog
+            dialog = ProjectMemberSelectionDialog(
+                self,
+                projects_data,
+                on_select=self._on_member_selected
+            )
+            
+            # Warte, bis der Dialog geschlossen wird
+            self.wait_window(dialog)
+        
+        except Exception as e:
+            self._show_status(f"Fehler beim Öffnen des Mitarbeiterauswahl-Dialogs: {e}", error=True)
+    
+    def _on_member_selected(self, member_data):
+        """
+        Wird aufgerufen, wenn ein Projektmitglied ausgewählt wurde
+        
+        Args:
+            member_data: Die Daten des ausgewählten Mitglieds
+        """
+        self.selected_member = member_data
+        
+        # Zeige den Namen des ausgewählten Mitglieds an
+        member_name = member_data.get("name", "")
+        member_id = member_data.get("id", "")
+        self.selected_member_label.configure(text=f"{member_name} (ID: {member_id})")
+        
+        # Prüfe, ob auch eine Datei ausgewählt wurde
+        self._update_ar_import_button()
+    
+    def _update_ar_import_button(self):
+        """Aktualisiert den Status des Import-Buttons für die Arbeitszeiterfassung"""
+        if self.ar_selected_file and self.selected_member:
+            self.ar_import_button.configure(state="normal")
+        else:
+            self.ar_import_button.configure(state="disabled")
+    
     def _import_bw_tool_data(self):
         """Importiert BW Tool Daten aus einer Excel-Datei"""
         # Prüfen, ob eine Datei ausgewählt wurde
@@ -471,7 +990,7 @@ class ImportModal(ctk.CTkToplevel):
                 shutil.copy2(target_path, backup_path)
             
             # Verarbeite die Excel-Datei
-            processed_data = self._process_bw_tool_file(self.selected_file)
+            processed_data = self._process_mime_file(self.selected_file)
             
             # Wenn keine Daten verarbeitet wurden
             if not processed_data:
@@ -508,469 +1027,74 @@ class ImportModal(ctk.CTkToplevel):
             import traceback
             traceback.print_exc()
     
-    def _process_bw_tool_file(self, file_path):
-        """
-        Verarbeitet die BW Tool Datei unter Berücksichtigung von MIME-Formaten
-        mit erweitertem Debug-Modus für Spaltenidentifikation
+    def _import_ar_calendar_data(self):
+        """Importiert Daten aus einer Arbeitszeiterfassungsdatei"""
+        # Prüfen, ob eine Datei und ein Mitarbeiter ausgewählt wurden
+        if not self.ar_selected_file:
+            self._show_status("Bitte wählen Sie eine Excel-Datei aus.", error=True)
+            return
         
-        Args:
-            file_path: Pfad zur Datei
-            
-        Returns:
-            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN], ...]
-        """
+        if not self.selected_member:
+            self._show_status("Bitte wählen Sie einen Mitarbeiter aus.", error=True)
+            return
+        
+        # Prüfen, ob die Datei existiert
+        if not os.path.exists(self.ar_selected_file):
+            self._show_status(f"Die Datei '{self.ar_selected_file}' existiert nicht.", error=True)
+            return
+        
         try:
-            # Aktiviere Debug-Modus
-            debug_mode = True
+            # Mitarbeiter-ID extrahieren
+            member_id = self.selected_member.get("id", "")
             
-            # Zuerst prüfen, um welche Art von Datei es sich handelt
-            with open(file_path, 'rb') as f:
-                header = f.read(4096)
+            # Excel-Datei verarbeiten
+            self._show_status("Arbeitszeitdaten werden verarbeitet...", error=False)
             
-            # MIME-Typ-Erkennung
-            if header.startswith(b'MIME-Ver') or b'Content-Type:' in header or b'<html' in header.lower() or b'<!DOCTYPE' in header.lower():
-                # Es handelt sich um eine E-Mail, HTML oder ähnliche Datei
-                self._show_status("MIME/HTML-Datei erkannt, versuche Extraktion...", error=False)
-                return self._process_mime_file(file_path, debug_mode=debug_mode)
+            # Ziel-Dateipfad
+            target_path = os.path.join("data", "kapa_data.csv")
             
-            # Standard Excel-Verarbeitung versuchen
-            try:
-                # Excel-Datei mit pandas einlesen
-                extension = os.path.splitext(file_path)[1].lower()
-                
-                if extension == '.xls':
-                    df = pd.read_excel(file_path, engine='xlrd')
-                else:
-                    df = pd.read_excel(file_path, engine='openpyxl')
-                
-                if debug_mode:
-                    self._show_status(f"Excel-Datei gelesen: {df.shape[0]} Zeilen, {df.shape[1]} Spalten", error=False)
-                    
-                    # Die ersten 10 Spaltenüberschriften ausgeben, falls vorhanden
-                    print("Spaltenüberschriften:")
-                    for i in range(min(df.shape[1], 20)):
-                        print(f"Spalte {i+1} (Index {i}): {df.columns[i]}")
-                    
-                    # Die ersten 5 Zeilen ausgeben, um zu sehen, welche Daten darin enthalten sind
-                    print("\nErste Zeilen der Datei:")
-                    for row_idx in range(min(df.shape[0], 5)):
-                        print(f"Zeile {row_idx+1}:")
-                        for col_idx in range(min(df.shape[1], 20)):
-                            print(f"  Spalte {col_idx+1} (Index {col_idx}): {df.iloc[row_idx, col_idx]}")
-                    
-                    # Suche nach Forecast-Einträgen in den Spalten
-                    print("\nSuche nach Forecast-Einträgen:")
-                    forecast_columns = []
-                    for col_idx in range(df.shape[1]):
-                        column_data = df.iloc[:min(df.shape[0], 20), col_idx].astype(str)
-                        forecast_found = False
-                        for value in column_data:
-                            if "FCAST" in value.upper() or "FORECAST" in value.upper():
-                                forecast_found = True
-                                break
-                        if forecast_found:
-                            forecast_columns.append(col_idx)
-                            print(f"Forecast-Einträge in Spalte {col_idx+1} (Index {col_idx}) gefunden")
-                
-                # Prüfe, ob die Datei genügend Spalten hat
-                if df.shape[1] < 13:
-                    self._show_status(f"Warnung: Die Datei hat nur {df.shape[1]} Spalten statt der erwarteten 13+", error=False)
-                
-                # Liste für die verarbeiteten Daten
-                processed_data = []
-                
-                # Versuche, die richtigen Spaltenindizes zu finden
-                id_col = None
-                date_col = None
-                hours_col = None
-                forecast_col = None
-                
-                # Durchsuche Spaltenüberschriften, falls vorhanden
-                column_headers = df.columns.astype(str)
-                for i, header in enumerate(column_headers):
-                    header_lower = header.lower()
-                    if "id" in header_lower or "mitarbeiter" in header_lower or "name" in header_lower:
-                        id_col = i
-                    elif "datum" in header_lower or "date" in header_lower:
-                        date_col = i
-                    elif "stunde" in header_lower or "hour" in header_lower:
-                        hours_col = i
-                    elif "forecast" in header_lower or "fcast" in header_lower:
-                        forecast_col = i
-                
-                # Spalten manuell zuweisen, wenn sie nicht gefunden wurden
-                if id_col is None:
-                    # Standard: Spalte 6 (Index 5)
-                    id_col = 5
-                    
-                if date_col is None:
-                    # Standard: Spalte 8 (Index 7)
-                    date_col = 7
-                    
-                if hours_col is None:
-                    # Standard: Spalte 13 (Index 12)
-                    hours_col = 12
-                    
-                if forecast_col is None:
-                    # Standard: Spalte 11 (Index 10)
-                    forecast_col = 10
-                
-                if debug_mode:
-                    print(f"\nSpaltenzuordnung:")
-                    print(f"ID-Spalte: {id_col+1} (Index {id_col})")
-                    print(f"Datums-Spalte: {date_col+1} (Index {date_col})")
-                    print(f"Stunden-Spalte: {hours_col+1} (Index {hours_col})")
-                    print(f"Forecast-Spalte: {forecast_col+1} (Index {forecast_col})")
-                
-                # Zeilen durchgehen und Daten extrahieren
-                found_entries = 0
-                for row_idx, row in df.iterrows():
-                    try:
-                        # Prüfe, ob die Zeile ein Forecast-Eintrag ist
-                        forecast_value = str(row.iloc[forecast_col]).upper() if forecast_col < len(row) and pd.notna(row.iloc[forecast_col]) else ""
-                        if not any(keyword in forecast_value for keyword in ["FCAST", "FORECAST"]):
-                            continue
-                        
-                        # ID extrahieren
-                        mitarbeiter_id = str(row.iloc[id_col]).strip() if id_col < len(row) and pd.notna(row.iloc[id_col]) else ""
-                        if not mitarbeiter_id:
-                            continue
-                        
-                        # Datum extrahieren
-                        datum_value = row.iloc[date_col] if date_col < len(row) else None
-                        if pd.isna(datum_value):
-                            continue
-                        
-                        # Datum in das richtige Format konvertieren
-                        if isinstance(datum_value, str):
-                            # Versuche, Datumsstring zu parsen
-                            try:
-                                datum_obj = pd.to_datetime(datum_value, dayfirst=True)
-                            except:
-                                continue
-                        else:
-                            # Bereits ein Datum/Timestamp
-                            datum_obj = pd.to_datetime(datum_value)
-                        
-                        datum = datum_obj.strftime("%d.%m.%Y")
-                        
-                        # Stunden extrahieren
-                        stunden_value = row.iloc[hours_col] if hours_col < len(row) else None
-                        if pd.isna(stunden_value):
-                            stunden = "0.0"
-                        else:
-                            try:
-                                stunden = str(float(stunden_value))
-                            except:
-                                stunden = "0.0"
-                        
-                        # Daten zur Liste hinzufügen
-                        processed_data.append([mitarbeiter_id, datum, stunden])
-                        found_entries += 1
-                        
-                        # Debug-Ausgabe für die ersten paar gefundenen Einträge
-                        if debug_mode and found_entries <= 5:
-                            print(f"\nGefundener Eintrag {found_entries}:")
-                            print(f"ID: {mitarbeiter_id}")
-                            print(f"Datum: {datum}")
-                            print(f"Stunden: {stunden}")
-                            print(f"Forecast-Wert: {forecast_value}")
-                    
-                    except Exception as row_error:
-                        print(f"Fehler beim Verarbeiten von Zeile {row_idx+1}: {row_error}")
-                        continue
-                
-                if debug_mode:
-                    print(f"\nInsgesamt {found_entries} Einträge verarbeitet")
-                
-                return processed_data
-                
-            except Exception as excel_error:
-                print(f"Standard Excel-Verarbeitung fehlgeschlagen: {excel_error}")
-                # Versuche es mit der MIME-Verarbeitung als Fallback
-                self._show_status("Excel-Format nicht erkannt, versuche alternatives Format...", error=False)
-                return self._process_mime_file(file_path)
-        
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            raise Exception(f"Fehler beim Verarbeiten der Datei: {str(e)}")
-
-    def _process_mime_file(self, file_path, debug_mode=False):
-        """
-        Verarbeitet eine MIME-formatierte Datei (z.B. E-Mail oder HTML)
-        
-        Args:
-            file_path: Pfad zur MIME/HTML-Datei
-            debug_mode: Aktiviert zusätzliche Debug-Ausgaben
+            # Backup erstellen, falls gewünscht
+            if self.ar_backup_var.get() and os.path.exists(target_path):
+                backup_path = f"{target_path}.bak"
+                shutil.copy2(target_path, backup_path)
             
-        Returns:
-            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN], ...]
-        """
-        try:
-            # Lese den Dateiinhalt mit verschiedenen Kodierungen
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except UnicodeDecodeError:
-                try:
-                    with open(file_path, 'r', encoding='latin1') as f:
-                        content = f.read()
-                except:
-                    with open(file_path, 'r', encoding='cp1252') as f:
-                        content = f.read()
+            # Verarbeite die Excel-Datei
+            processed_data = self._process_ar_calendar_file(self.ar_selected_file, member_id)
             
-            if debug_mode:
-                # Zeige die ersten 500 Zeichen der Datei
-                print(f"\nDateiinhalt (Anfang):\n{content[:500]}...\n")
-            
-            # Liste für die verarbeiteten Daten
-            processed_data = []
-            
-            # Import regex
-            import re
-            
-            # Extrahiere alle Tabellen aus HTML
-            table_pattern = r'<table[^>]*>(.*?)</table>'
-            tables = re.findall(table_pattern, content, re.DOTALL | re.IGNORECASE)
-            
-            if debug_mode:
-                print(f"{len(tables)} Tabellen in der Datei gefunden")
-            
-            if tables:
-                # Es wurden Tabellen gefunden, versuche die Daten zu extrahieren
-                for table_idx, table in enumerate(tables):
-                    # Extrahiere alle Tabellenzeilen
-                    row_pattern = r'<tr[^>]*>(.*?)</tr>'
-                    rows = re.findall(row_pattern, table, re.DOTALL | re.IGNORECASE)
-                    
-                    if debug_mode:
-                        print(f"Tabelle {table_idx+1}: {len(rows)} Zeilen gefunden")
-                    
-                    # Speichere die Spaltenindizes für ID, Datum und Stunden
-                    id_col = None
-                    date_col = None
-                    hours_col = None
-                    forecast_col = None
-                    
-                    # Zeilen durchgehen
-                    for row_idx, row in enumerate(rows):
-                        # Extrahiere alle Zellen in dieser Zeile
-                        cell_pattern = r'<t[dh][^>]*>(.*?)</t[dh]>'
-                        cells = re.findall(cell_pattern, row, re.DOTALL | re.IGNORECASE)
-                        
-                        # Bereinige HTML-Tags und Whitespace
-                        cells = [re.sub(r'<[^>]+>', '', cell).strip() for cell in cells]
-                        
-                        if debug_mode and row_idx < 3:
-                            print(f"Zeile {row_idx+1} in Tabelle {table_idx+1}: {cells}")
-                        
-                        # Wenn es die erste Zeile ist, versuche die Spaltenüberschriften zu identifizieren
-                        if row_idx == 0 and not (id_col and date_col and hours_col):
-                            for i, cell in enumerate(cells):
-                                cell_text = cell.lower()
-                                # Suche nach ID-Spalte
-                                if 'id' in cell_text or 'mitarbeiter' in cell_text or 'name' in cell_text:
-                                    id_col = i
-                                # Suche nach Datumsspalte
-                                elif 'datum' in cell_text or 'date' in cell_text:
-                                    date_col = i
-                                # Suche nach Stundenspalte
-                                elif 'stunde' in cell_text or 'hour' in cell_text:
-                                    hours_col = i
-                                # Suche nach Forecast-Spalte
-                                elif 'forecast' in cell_text or 'fcast' in cell_text:
-                                    forecast_col = i
-                        
-                        # Überspringe die erste Zeile, da sie wahrscheinlich Überschriften enthält
-                        if row_idx == 0:
-                            continue
-                        
-                        # Wenn wir Forecast-Einträge identifizieren können
-                        forecast_found = False
-                        if forecast_col is not None and len(cells) > forecast_col:
-                            # Prüfe, ob die Zeile ein Forecast-Eintrag ist
-                            forecast_value = cells[forecast_col].upper()
-                            if any(keyword in forecast_value for keyword in ["FCAST", "FORECAST"]):
-                                forecast_found = True
-                        else:
-                            # Wenn wir keine Forecast-Spalte haben, prüfe alle Zellen
-                            for cell in cells:
-                                if "FCAST" in cell.upper() or "FORECAST" in cell.upper():
-                                    forecast_found = True
-                                    break
-                        
-                        if not forecast_found:
-                            continue
-                        
-                        # Extrahiere die benötigten Informationen
-                        # Wir verwenden die identifizierten Spalten oder suchen in allen Zellen
-                        
-                        # ID extrahieren
-                        mitarbeiter_id = ""
-                        if id_col is not None and len(cells) > id_col:
-                            mitarbeiter_id = cells[id_col].strip()
-                        else:
-                            # Suche nach ID in allen Zellen
-                            for cell in cells:
-                                if re.match(r'^[A-Z0-9][A-Z0-9._-]{2,}$', cell.strip()):
-                                    mitarbeiter_id = cell.strip()
-                                    break
-                        
-                        if not mitarbeiter_id:
-                            continue
-                        
-                        # Datum extrahieren
-                        datum = ""
-                        if date_col is not None and len(cells) > date_col:
-                            date_text = cells[date_col]
-                            try:
-                                datum_obj = pd.to_datetime(date_text, dayfirst=True)
-                                datum = datum_obj.strftime("%d.%m.%Y")
-                            except:
-                                pass
-                        
-                        if not datum:
-                            # Suche nach Datum in allen Zellen
-                            date_patterns = [
-                                r'\b\d{2}\.\d{2}\.\d{4}\b',  # DD.MM.YYYY
-                                r'\b\d{2}/\d{2}/\d{4}\b',    # DD/MM/YYYY
-                                r'\b\d{4}-\d{2}-\d{2}\b'     # YYYY-MM-DD
-                            ]
-                            
-                            for cell in cells:
-                                for pattern in date_patterns:
-                                    date_match = re.search(pattern, cell)
-                                    if date_match:
-                                        try:
-                                            datum_obj = pd.to_datetime(date_match.group(0), dayfirst=True)
-                                            datum = datum_obj.strftime("%d.%m.%Y")
-                                            break
-                                        except:
-                                            pass
-                                if datum:
-                                    break
-                        
-                        if not datum:
-                            continue
-                        
-                        # Stunden extrahieren
-                        stunden = "0.0"
-                        if hours_col is not None and len(cells) > hours_col:
-                            hours_text = cells[hours_col]
-                            try:
-                                hours_value = float(hours_text.replace(',', '.'))
-                                stunden = str(hours_value)
-                            except:
-                                # Versuche, eine Zahl aus dem Text zu extrahieren
-                                hours_match = re.search(r'\b\d+[,.]?\d*\b', hours_text)
-                                if hours_match:
-                                    try:
-                                        hours_value = float(hours_match.group(0).replace(',', '.'))
-                                        stunden = str(hours_value)
-                                    except:
-                                        pass
-                        
-                        if stunden == "0.0":
-                            # Suche nach Stunden in allen Zellen
-                            for cell in cells:
-                                hours_match = re.search(r'\b\d+[,.]?\d*\b', cell)
-                                if hours_match:
-                                    try:
-                                        hours_value = float(hours_match.group(0).replace(',', '.'))
-                                        if 0 <= hours_value <= 24:
-                                            stunden = str(hours_value)
-                                            break
-                                    except:
-                                        pass
-                        
-                        # Daten zur Liste hinzufügen
-                        processed_data.append([mitarbeiter_id, datum, stunden])
-                        
-                        if debug_mode and len(processed_data) <= 5:
-                            print(f"\nGefundener Eintrag {len(processed_data)}:")
-                            print(f"ID: {mitarbeiter_id}")
-                            print(f"Datum: {datum}")
-                            print(f"Stunden: {stunden}")
-            
-            # Wenn keine Tabellen gefunden wurden oder keine Daten extrahiert werden konnten,
-            # versuche es mit dem Gesamttext
+            # Wenn keine Daten verarbeitet wurden
             if not processed_data:
-                if debug_mode:
-                    print("\nKeine Daten aus Tabellen extrahiert, versuche Text-Analyse...")
-                
-                # Suche nach relevanten Zeilen im Gesamttext
-                lines = content.split('\n')
-                forecast_lines = [line for line in lines if 'FCAST' in line.upper() or 'FORECAST' in line.upper()]
-                
-                if debug_mode:
-                    print(f"{len(forecast_lines)} Zeilen mit 'FORECAST' gefunden")
-                
-                for line_idx, line in enumerate(forecast_lines):
-                    # Entferne HTML-Tags
-                    line = re.sub(r'<[^>]+>', ' ', line)
-                    
-                    if debug_mode and line_idx < 5:
-                        print(f"Zeile {line_idx+1} mit Forecast: {line[:100]}...")
-                    
-                    # Suche nach ID
-                    id_match = re.search(r'\b[A-Z0-9][A-Z0-9._-]{2,}\b', line)
-                    if not id_match:
-                        continue
-                    
-                    mitarbeiter_id = id_match.group(0)
-                    
-                    # Suche nach Datum
-                    date_patterns = [
-                        r'\b\d{2}\.\d{2}\.\d{4}\b',  # DD.MM.YYYY
-                        r'\b\d{2}/\d{2}/\d{4}\b',    # DD/MM/YYYY
-                        r'\b\d{4}-\d{2}-\d{2}\b'     # YYYY-MM-DD
-                    ]
-                    
-                    datum = ""
-                    for pattern in date_patterns:
-                        date_match = re.search(pattern, line)
-                        if date_match:
-                            try:
-                                datum_obj = pd.to_datetime(date_match.group(0), dayfirst=True)
-                                datum = datum_obj.strftime("%d.%m.%Y")
-                                break
-                            except:
-                                pass
-                    
-                    if not datum:
-                        continue
-                    
-                    # Suche nach Stunden
-                    stunden = "0.0"
-                    hours_match = re.search(r'\b\d+[,.]?\d*\b', line)
-                    if hours_match:
-                        try:
-                            hours_value = float(hours_match.group(0).replace(',', '.'))
-                            if 0 <= hours_value <= 24:
-                                stunden = str(hours_value)
-                        except:
-                            pass
-                    
-                    # Daten zur Liste hinzufügen
-                    processed_data.append([mitarbeiter_id, datum, stunden])
-                    
-                    if debug_mode and len(processed_data) <= 5:
-                        print(f"\nGefundener Eintrag {len(processed_data)} aus Text:")
-                        print(f"ID: {mitarbeiter_id}")
-                        print(f"Datum: {datum}")
-                        print(f"Stunden: {stunden}")
+                self._show_status("Keine gültigen Daten in der Datei gefunden.", error=True)
+                return
             
-            if debug_mode:
-                print(f"\nInsgesamt {len(processed_data)} Einträge gefunden und verarbeitet")
+            # Einträge überschreiben, falls vorhanden
+            if self.ar_overwrite_var.get() and os.path.exists(target_path):
+                final_data = self._merge_with_existing_data(processed_data, target_path)
+            else:
+                # Nur neue Daten hinzufügen
+                final_data = processed_data
+                if os.path.exists(target_path):
+                    with open(target_path, 'r', newline='', encoding='utf-8') as existing_file:
+                        reader = csv.reader(existing_file, delimiter=';')
+                        existing_data = list(reader)
+                        # Nur Zeilen hinzufügen, die noch nicht existieren
+                        id_date_pairs = {(row[0], row[1]) for row in existing_data}
+                        final_data = [row for row in processed_data if (row[0], row[1]) not in id_date_pairs]
+                        final_data = existing_data + final_data
             
-            return processed_data
+            # Daten speichern
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            with open(target_path, 'w', newline='', encoding='utf-8') as output_file:
+                writer = csv.writer(output_file, delimiter=';')
+                writer.writerows(final_data)
+            
+            # Erfolgsmeldung anzeigen
+            self._show_status(f"Import erfolgreich: {len(processed_data)} Einträge verarbeitet", error=False)
         
         except Exception as e:
+            # Fehlermeldung anzeigen
+            self._show_status(f"Fehler beim Import: {str(e)}", error=True)
             import traceback
             traceback.print_exc()
-            print(f"MIME-Verarbeitung fehlgeschlagen: {e}")
-            return []
     
     def _import_projekt_data(self):
         """Importiert Projektdaten aus einer JSON-Datei"""
@@ -1049,25 +1173,6 @@ class ImportModal(ctk.CTkToplevel):
             text_color="red" if error else "green"
         )
     
-    def center_window(self):
-        """Zentriert das Fenster auf dem Bildschirm"""
-        self.update_idletasks()
-        
-        # Fenstergröße
-        width = self.winfo_width()
-        height = self.winfo_height()
-        
-        # Bildschirmgröße
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        
-        # Position berechnen
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
-        
-        # Fenster positionieren
-        self.geometry(f"{width}x{height}+{x}+{y}")
-
     def _merge_with_existing_data(self, new_data, existing_file_path):
         """
         Führt neue Daten mit vorhandenen Daten zusammen, wobei vorhandene Einträge überschrieben werden
@@ -1105,3 +1210,406 @@ class ImportModal(ctk.CTkToplevel):
         
         except Exception as e:
             raise Exception(f"Fehler beim Zusammenführen der Daten: {str(e)}")
+    
+    def _process_mime_file(self, file_path, debug_mode=True):
+        """
+        Verarbeitet eine MIME-formatierte Datei (z.B. E-Mail oder HTML)
+        
+        Args:
+            file_path: Pfad zur MIME/HTML-Datei
+            debug_mode: Aktiviert zusätzliche Debug-Ausgaben
+            
+        Returns:
+            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN], ...]
+        """
+        try:
+            # Lese den Dateiinhalt mit verschiedenen Kodierungen
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                try:
+                    with open(file_path, 'r', encoding='latin1') as f:
+                        content = f.read()
+                except:
+                    with open(file_path, 'r', encoding='cp1252') as f:
+                        content = f.read()
+            
+            # Import regex und datetime
+            import re
+            import datetime
+            
+            # Liste für die verarbeiteten Daten
+            processed_data = []
+            
+            # Extrahiere alle Tabellenzeilen
+            rows = re.findall(r'<tr.*?>(.*?)</tr>', content, re.DOTALL)
+            
+            print(f"Gefunden: {len(rows)} Zeilen in der Datei")
+            
+            # Zähler für diagnostische Zwecke
+            cells_too_few = 0
+            no_forecast = 0
+            processed_rows = 0
+            
+            for row_idx, row in enumerate(rows):
+                # Extrahiere alle Zellen in dieser Zeile
+                cells = re.findall(r'<td.*?>(.*?)</td>', row, re.DOTALL)
+                
+                # Debug-Ausgabe für die ersten 5 Zeilen
+                if debug_mode and row_idx < 5:
+                    print(f"\nZeile {row_idx+1} hat {len(cells)} Zellen")
+                    if len(cells) > 0:
+                        for i, cell in enumerate(cells):
+                            if i < 15:  # Zeige die ersten 15 Zellen
+                                cleaned_cell = re.sub(r'<.*?>', '', cell).replace("&#32;", " ").strip()
+                                print(f"  Zelle {i+1}: {cleaned_cell[:30]}")
+                
+                # Überspringe die Zeile, wenn sie nicht genügend Zellen hat
+                if len(cells) < 13:
+                    cells_too_few += 1
+                    continue
+                
+                try:
+                    # Prüfe, ob die Zeile ein Forecast-Eintrag ist (Spalte 11, Index 10)
+                    forecast_cell = cells[10] if len(cells) > 10 else ""
+                    forecast_value = re.sub(r'<.*?>', '', forecast_cell).upper().strip()
+                    
+                    if debug_mode and row_idx < 5:
+                        print(f"Zeile {row_idx+1} Forecast-Wert: '{forecast_value}'")
+                    
+                    if "FCAST" not in forecast_value and "FORECAST" not in forecast_value:
+                        no_forecast += 1
+                        continue
+                    
+                    # Name (ID) extrahieren
+                    sixth_value = re.sub(r'<.*?>', '', cells[5]).replace("&#32;", " ").strip()
+                    if sixth_value == "Fremdleistung OPS" and len(cells) > 6:
+                        mitarbeiter_id = re.sub(r'<.*?>', '', cells[6]).replace("&#32;", " ").strip()
+                    else:
+                        mitarbeiter_id = sixth_value
+                    
+                    # Datum extrahieren
+                    date_cell = cells[7]
+                    date_value = re.sub(r'<.*?>', '', date_cell).strip()
+                    try:
+                        # Versuche, einen Excel-Datumswert zu konvertieren
+                        excel_date = int(float(date_value.replace(",", ".")))
+                        datetime_date = datetime.datetime(1899, 12, 30) + datetime.timedelta(days=excel_date)
+                        datum = datetime_date.strftime('%d.%m.%Y')
+                    except ValueError:
+                        # Falls es kein numerischer Wert ist, verwende den Wert direkt
+                        datum = date_value
+                    
+                    # Stunden extrahieren
+                    hours_cell = cells[12]
+                    hours_value = re.sub(r'<.*?>', '', hours_cell).strip()
+                    try:
+                        stunden_float = float(hours_value.replace(",", "."))
+                        stunden = str(stunden_float)
+                    except ValueError:
+                        stunden = "0.0"  # Fallback, wenn keine gültige Zahl
+                    
+                    # Daten zur Liste hinzufügen
+                    processed_data.append([mitarbeiter_id, datum, stunden])
+                    processed_rows += 1
+                    
+                    if debug_mode and processed_rows <= 5:
+                        print(f"\nErfolgreiche Extraktion aus Zeile {row_idx+1}:")
+                        print(f"ID: {mitarbeiter_id}")
+                        print(f"Datum: {datum}")
+                        print(f"Stunden: {stunden}")
+                
+                except Exception as e:
+                    if debug_mode:
+                        print(f"Fehler bei Zeile {row_idx+1}: {e}")
+                    continue
+            
+            print(f"\nZusammenfassung:")
+            print(f"Gesamt Zeilen: {len(rows)}")
+            print(f"Zeilen mit zu wenigen Zellen: {cells_too_few}")
+            print(f"Zeilen ohne Forecast: {no_forecast}")
+            print(f"Verarbeitete Zeilen: {processed_rows}")
+            
+            return processed_data
+        
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"MIME-Verarbeitung fehlgeschlagen: {e}")
+            return []
+    
+    def _process_ar_calendar_file(self, file_path, selected_member_id, debug_mode=True):
+        """
+        Verarbeitet eine normale Excel-Datei im ARCalendarList-Format
+        
+        Args:
+            file_path: Pfad zur Excel-Datei
+            selected_member_id: ID des ausgewählten Projektmitglieds
+            debug_mode: Aktiviert zusätzliche Debug-Ausgaben
+            
+        Returns:
+            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN], ...]
+        """
+        import pandas as pd
+        import re
+        import datetime
+        import traceback
+        
+        # Liste für die verarbeiteten Daten
+        processed_data = []
+        
+        try:
+            print(f"Verarbeite ARCalendar-Datei: {file_path}")
+            print(f"Ausgewählte Mitarbeiter-ID: {selected_member_id}")
+            
+            # Versuche verschiedene Methoden, um die Excel-Datei zu lesen
+            df = None
+            errors = []
+
+            try:
+                # Methode 1: Verwende openpyxl mit data_only=True (ignoriert Styling-Informationen)
+                if file_path.lower().endswith('.xlsx'):
+                    print("Versuche Methode 1: openpyxl mit data_only=True")
+                    df = pd.read_excel(file_path, engine='openpyxl', data_only=True)
+                else:
+                    raise ValueError("Nicht XLSX-Format, überspringe diese Methode")
+            except Exception as e:
+                error_msg = f"Methode 1 fehlgeschlagen: {str(e)}"
+                print(error_msg)
+                errors.append(error_msg)
+                
+                try:
+                    # Methode 2: Verwende xlrd für alle Dateien
+                    print("Versuche Methode 2: xlrd Engine")
+                    df = pd.read_excel(file_path, engine='xlrd')
+                except Exception as e:
+                    error_msg = f"Methode 2 fehlgeschlagen: {str(e)}"
+                    print(error_msg)
+                    errors.append(error_msg)
+                    
+                    try:
+                        # Methode 3: Verwende die standard Engine von pandas
+                        print("Versuche Methode 3: Standard pandas Engine")
+                        df = pd.read_excel(file_path)
+                    except Exception as e:
+                        error_msg = f"Methode 3 fehlgeschlagen: {str(e)}"
+                        print(error_msg)
+                        errors.append(error_msg)
+            
+            # Wenn keine Methode funktioniert hat
+            if df is None:
+                error_message = "Alle Methoden zum Lesen der Excel-Datei sind fehlgeschlagen:\n" + "\n".join(errors)
+                print(error_message)
+                self._show_status(error_message, error=True)
+                return []
+            
+            print(f"Excel-Datei erfolgreich gelesen: {df.shape[0]} Zeilen, {df.shape[1]} Spalten")
+            
+            # Zeige die Spalten zur Überprüfung
+            if debug_mode:
+                print("\nSpaltennamen:")
+                print(df.columns.tolist())
+                print("\nErste 5 Zeilen der Excel-Datei:")
+                print(df.head().to_string())
+            
+            # Überprüfe, ob die erwarteten Spalten vorhanden sind
+            required_columns = ["Date", "TotalHours"]
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            # Versuche alternative Spaltennamen, falls die Standardnamen nicht gefunden wurden
+            alternative_columns = {}
+            if missing_columns:
+                print(f"Warnung: Folgende Spalten fehlen: {missing_columns}")
+                print("Suche nach alternativen Spaltennamen...")
+                
+                # Suche nach Spalten mit ähnlichen Namen
+                column_mapping = {
+                    "Date": ["date", "datum", "tag", "day", "datum", "arbeitszeit", "zeitraum", "day", "date1"],
+                    "TotalHours": ["total", "hours", "stunden", "gesamtstunden", "zeit", "summe", "gesamt", "hours", "totalhours", "total"]
+                }
+                
+                for required_col, alternatives in column_mapping.items():
+                    if required_col in missing_columns:
+                        for alt in alternatives:
+                            matching_cols = [col for col in df.columns if isinstance(col, str) and alt.lower() in col.lower()]
+                            if matching_cols:
+                                alternative_columns[required_col] = matching_cols[0]
+                                print(f"Alternative für '{required_col}' gefunden: '{matching_cols[0]}'")
+                                break
+            
+            # Aktualisiere die Spaltennamen mit den gefundenen Alternativen
+            date_column = alternative_columns.get("Date", "Date")
+            hours_column = alternative_columns.get("TotalHours", "TotalHours")
+            
+            # Wenn immer noch keine Spalten gefunden wurden, versuche numerische Indizes
+            if date_column not in df.columns and hours_column not in df.columns:
+                print("Keine passenden Spaltennamen gefunden, versuche mit Position der Spalten")
+                # Zeige alle verfügbaren Spalten
+                for i, col in enumerate(df.columns):
+                    print(f"Spalte {i}: {col}")
+                
+                # Finde die wahrscheinlichste Datumsspalte (erste Spalte mit Datum-ähnlichen Werten)
+                date_column_index = None
+                for i, col in enumerate(df.columns):
+                    try:
+                        # Prüfe die ersten Werte in der Spalte
+                        for j in range(min(5, len(df))):
+                            val = df.iloc[j, i]
+                            if isinstance(val, (pd.Timestamp, datetime.datetime, datetime.date)) or (
+                                isinstance(val, str) and any(c in val for c in ['-', '.', '/'])):
+                                date_column_index = i
+                                date_column = df.columns[i]
+                                print(f"Datumsspalte gefunden: Spalte {i} ({date_column})")
+                                break
+                        if date_column_index is not None:
+                            break
+                    except:
+                        continue
+                
+                # Finde die wahrscheinlichste Stundenspalte (Spalte mit numerischen Werten)
+                hours_column_index = None
+                for i, col in enumerate(df.columns):
+                    if i == date_column_index:
+                        continue  # Überspringe die Datumsspalte
+                    try:
+                        # Prüfe die ersten Werte in der Spalte
+                        numeric_count = 0
+                        for j in range(min(5, len(df))):
+                            val = df.iloc[j, i]
+                            if pd.api.types.is_numeric_dtype(type(val)) or (
+                                isinstance(val, str) and val.replace('.', '').replace(',', '').isdigit()):
+                                numeric_count += 1
+                        if numeric_count >= 3:  # Mindestens 3 numerische Werte gefunden
+                            hours_column_index = i
+                            hours_column = df.columns[i]
+                            print(f"Stundenspalte gefunden: Spalte {i} ({hours_column})")
+                            break
+                    except:
+                        continue
+            
+            # Überprüfe erneut, ob die Spalten jetzt verfügbar sind
+            if date_column not in df.columns:
+                print(f"Fehler: Keine geeignete Spalte für Datum gefunden!")
+                self._show_status("Konnte keine Datumsspalte in der Excel-Datei identifizieren.", error=True)
+                return []
+            
+            if hours_column not in df.columns:
+                print(f"Fehler: Keine geeignete Spalte für Stunden gefunden!")
+                self._show_status("Konnte keine Stundenspalte in der Excel-Datei identifizieren.", error=True)
+                return []
+            
+            # Verarbeite die Daten
+            processed_rows = 0
+            
+            for index, row in df.iterrows():
+                try:
+                    # Extrahiere das Datum
+                    date_value = row[date_column]
+                    
+                    # Konvertiere das Datum ins richtige Format
+                    if isinstance(date_value, (pd.Timestamp, datetime.datetime, datetime.date)):
+                        # Pandas Timestamp direkt formatieren
+                        datum = date_value.strftime('%d.%m.%Y')
+                    else:
+                        try:
+                            # Versuche, den Wert als Datum zu parsen
+                            datum_obj = pd.to_datetime(date_value)
+                            datum = datum_obj.strftime('%d.%m.%Y')
+                        except:
+                            # Wenn das Parsen fehlschlägt, verwende den Rohwert
+                            datum = str(date_value)
+                    
+                    # Extrahiere die Stunden
+                    hours_value = row[hours_column]
+                    
+                    # Konvertiere die Stunden in eine Zahl
+                    if pd.isna(hours_value):
+                        # Überspringe Zeilen ohne Stundenwert
+                        continue
+                    
+                    try:
+                        # Konvertiere in float und dann in String
+                        if isinstance(hours_value, str):
+                            # Kommas durch Punkte ersetzen
+                            hours_value = hours_value.replace(',', '.')
+                        
+                        stunden = str(float(hours_value))
+                    except ValueError:
+                        # Wenn die Konvertierung fehlschlägt, überspringe die Zeile
+                        print(f"Ungültiger Stundenwert in Zeile {index+2}: {hours_value}")
+                        continue
+                    
+                    # Füge die Daten zur Liste hinzu
+                    processed_data.append([selected_member_id, datum, stunden])
+                    processed_rows += 1
+                    
+                    # Debug-Ausgabe für erfolgreiche Extraktion
+                    if debug_mode and processed_rows <= 5:
+                        print(f"\nErfolgreiche Extraktion aus Zeile {index+2}:")
+                        print(f"ID: {selected_member_id}")
+                        print(f"Datum: {datum}")
+                        print(f"Stunden: {stunden}")
+                
+                except Exception as e:
+                    print(f"Fehler beim Verarbeiten von Zeile {index+2}: {e}")
+                    if debug_mode:
+                        traceback.print_exc()
+                    continue
+            
+            print(f"\nVerarbeitungsstatistik:")
+            print(f"Gesamt Zeilen in Excel: {len(df)}")
+            print(f"Erfolgreich verarbeitete Zeilen: {processed_rows}")
+            print(f"Extrahierte Datensätze: {len(processed_data)}")
+            
+            return processed_data
+        
+        except Exception as e:
+            error_message = f"Allgemeiner Fehler bei der Verarbeitung: {e}"
+            print(error_message)
+            traceback.print_exc()
+            self._show_status(error_message, error=True)
+            return []
+    
+    def _load_project_data(self):
+        """
+        Lädt die Projektdaten aus der project.json-Datei
+        
+        Returns:
+            dict: Die geladenen Projektdaten oder None bei einem Fehler
+        """
+        try:
+            # Pfad zur project.json
+            json_path = os.path.join("data", "project.json")
+            
+            # Prüfe, ob die Datei existiert
+            if not os.path.exists(json_path):
+                print(f"Warnung: Datei {json_path} nicht gefunden.")
+                return None
+            
+            # Lade die Daten
+            with open(json_path, 'r', encoding='utf-8') as json_file:
+                return json.load(json_file)
+        
+        except Exception as e:
+            print(f"Fehler beim Laden der Projektdaten: {e}")
+            return None
+    
+    def center_window(self):
+        """Zentriert das Fenster auf dem Bildschirm"""
+        self.update_idletasks()
+        
+        # Fenstergröße
+        width = self.winfo_width()
+        height = self.winfo_height()
+        
+        # Bildschirmgröße
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Position berechnen
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        
+        # Fenster positionieren
+        self.geometry(f"{width}x{height}+{x}+{y}")
