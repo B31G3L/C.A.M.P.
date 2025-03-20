@@ -147,8 +147,8 @@ class Toolbar(ctk.CTkFrame):
         return {
             # Button-Callbacks
             "show_data": self._show_data,
-            "import_data": self._on_import_data,
-            "create_markup": self._create_markup,
+            "import_data": self._import_data,
+            "create_markup": self._show_import_data,
             "camp_manager": self._show_camp_manager,
             
             # Die alten Callbacks können bleiben, sie werden vom Manager-Modal verwendet
