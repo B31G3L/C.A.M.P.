@@ -1213,16 +1213,16 @@ class ImportModal(ctk.CTkToplevel):
     
     def _process_mime_file(self, file_path):
         """
-        Simplified version of the method to process a MIME-formatted file
+        Verarbeitet eine MIME-formatierte Datei
         
         Args:
-            file_path: Path to the MIME/HTML file
+            file_path: Pfad zur MIME/HTML-Datei
             
         Returns:
-            List[List[str]]: Processed data in format [[ID, DATE, HOURS], ...]
+            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN, KAPAZITÄT], ...]
         """
         try:
-            # Read file content with appropriate encoding
+            # Dateiinhalt mit geeigneter Kodierung lesen
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -1237,59 +1237,68 @@ class ImportModal(ctk.CTkToplevel):
             import re
             import datetime
             
-            # List for processed data
+            # Liste für verarbeitete Daten
             processed_data = []
             
-            # Extract all table rows
+            # Alle Tabellenzeilen extrahieren
             rows = re.findall(r'<tr.*?>(.*?)</tr>', content, re.DOTALL)
             
-            # Process rows
+            # Zeilen verarbeiten
             for row in rows:
-                # Extract all cells in this row
+                # Alle Zellen in dieser Zeile extrahieren
                 cells = re.findall(r'<td.*?>(.*?)</td>', row, re.DOTALL)
                 
-                # Skip rows with insufficient cells
+                # Zeilen mit unzureichenden Zellen überspringen
                 if len(cells) < 13:
                     continue
                 
                 try:
-                    # Check if this is a forecast entry (column 11, index 10)
+                    # Prüfen, ob dies ein Forecast-Eintrag ist (Spalte 11, Index 10)
                     forecast_cell = cells[10] if len(cells) > 10 else ""
                     forecast_value = re.sub(r'<.*?>', '', forecast_cell).upper().strip()
                     
                     if "FCAST" not in forecast_value and "FORECAST" not in forecast_value:
                         continue
                     
-                    # Extract name (ID)
+                    # Name (ID) extrahieren
                     sixth_value = re.sub(r'<.*?>', '', cells[5]).replace("&#32;", " ").strip()
                     if sixth_value == "Fremdleistung OPS" and len(cells) > 6:
                         mitarbeiter_id = re.sub(r'<.*?>', '', cells[6]).replace("&#32;", " ").strip()
                     else:
                         mitarbeiter_id = sixth_value
                     
-                    # Extract date
+                    # Datum extrahieren
                     date_cell = cells[7]
                     date_value = re.sub(r'<.*?>', '', date_cell).strip()
                     try:
-                        # Try to convert an Excel date value
+                        # Versuche, einen Excel-Datumswert zu konvertieren
                         excel_date = int(float(date_value.replace(",", ".")))
                         datetime_date = datetime.datetime(1899, 12, 30) + datetime.timedelta(days=excel_date)
                         datum = datetime_date.strftime('%d.%m.%Y')
                     except ValueError:
-                        # If it's not a numeric value, use the value directly
+                        # Wenn es kein numerischer Wert ist, den Wert direkt verwenden
                         datum = date_value
                     
-                    # Extract hours
+                    # Stunden extrahieren
                     hours_cell = cells[12]
                     hours_value = re.sub(r'<.*?>', '', hours_cell).strip()
                     try:
                         stunden_float = float(hours_value.replace(",", "."))
                         stunden = str(stunden_float)
+                        
+                        # Kapazität berechnen: Stunden >= 8 entsprechen einer Kapazität von 1
+                        if stunden_float >= 8:
+                            kapazitaet = "1.0"
+                        else:
+                            # Anteilige Kapazität berechnen (Stunden/8)
+                            kapazitaet = str(round(stunden_float / 8, 2))
+                        
                     except ValueError:
-                        stunden = "0.0"  # Fallback if not a valid number
+                        stunden = "0.0"  # Fallback, wenn keine gültige Zahl
+                        kapazitaet = "0.0"
                     
-                    # Add data to the list
-                    processed_data.append([mitarbeiter_id, datum, stunden])
+                    # Daten zur Liste hinzufügen [ID, DATUM, STUNDEN, KAPAZITÄT]
+                    processed_data.append([mitarbeiter_id, datum, stunden, kapazitaet])
                     
                 except Exception:
                     continue
@@ -1297,20 +1306,19 @@ class ImportModal(ctk.CTkToplevel):
             return processed_data
         
         except Exception as e:
-            self._show_status(f"MIME processing failed: {e}", error=True)
+            self._show_status(f"MIME-Verarbeitung fehlgeschlagen: {e}", error=True)
             return []
-
 
     def _process_ar_calendar_file(self, file_path, selected_member_id):
         """
-        Simplified method to process an Excel file in ARCalendarList format
+        Verarbeitet eine Excel-Datei im ARCalendarList-Format
         
         Args:
-            file_path: Path to the Excel file
-            selected_member_id: ID of the selected project member
+            file_path: Pfad zur Excel-Datei
+            selected_member_id: ID des ausgewählten Projektmitglieds
             
         Returns:
-            List[List[str]]: Processed data in format [[ID, DATE, HOURS], ...]
+            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN, KAPAZITÄT], ...]
         """
         import pandas as pd
         import re
@@ -1319,23 +1327,23 @@ class ImportModal(ctk.CTkToplevel):
         import os
         import csv
         
-        # List for processed data
+        # Liste für verarbeitete Daten
         processed_data = []
         temp_files = []
         
         try:
-            # Try different methods to read the Excel file
+            # Verschiedene Methoden zum Lesen der Excel-Datei ausprobieren
             df = None
             success = False
             
-            # Method 1: Use pandas directly
+            # Methode 1: Pandas direkt verwenden
             try:
                 df = pd.read_excel(file_path)
                 success = True
             except Exception:
                 pass
             
-            # Method 2: Convert to CSV first using openpyxl
+            # Methode 2: Zuerst in CSV konvertieren mit openpyxl
             if not success:
                 try:
                     from openpyxl import load_workbook
@@ -1344,101 +1352,110 @@ class ImportModal(ctk.CTkToplevel):
                     temp_csv.close()
                     temp_files.append(temp_csv.name)
                     
-                    # Try to load, ignore styles
+                    # Versuche zu laden, ignoriere Stile
                     wb = load_workbook(filename=file_path, read_only=True, data_only=True)
                     ws = wb.active
                     
-                    # Write to CSV
+                    # In CSV schreiben
                     with open(temp_csv.name, 'w', newline='', encoding='utf-8') as f:
                         writer = csv.writer(f)
                         for row in ws.iter_rows(values_only=True):
                             writer.writerow(row)
                     
-                    # Create DataFrame from CSV
+                    # DataFrame aus CSV erstellen
                     df = pd.read_csv(temp_csv.name)
                     success = True
                 
                 except Exception:
                     pass
             
-            # If we still don't have data, show error
+            # Wenn wir immer noch keine Daten haben, Fehler anzeigen
             if not success or df is None:
-                self._show_status("Failed to read Excel file.", error=True)
+                self._show_status("Excel-Datei konnte nicht gelesen werden.", error=True)
                 return []
             
-            # Find the date and hours columns
+            # Suche nach Datums- und Stundenspalten
             date_column = None
             hours_column = None
             
-            # Look for columns with common names
+            # Suche nach Spalten mit üblichen Namen
             date_keywords = ["date", "datum", "tag", "day", "date1"]
             hours_keywords = ["total", "hours", "stunden", "zeit", "summe", "totalhours"]
             
             for col in df.columns:
                 col_lower = str(col).lower()
                 
-                # Check for date column
+                # Nach Datumsspalte suchen
                 if not date_column:
                     for kw in date_keywords:
                         if kw in col_lower:
                             date_column = col
                             break
                 
-                # Check for hours column
+                # Nach Stundenspalte suchen
                 if not hours_column:
                     for kw in hours_keywords:
                         if kw in col_lower:
                             hours_column = col
                             break
             
-            # If still not found, use first two columns
+            # Wenn nicht gefunden, die ersten beiden Spalten verwenden
             if date_column is None and len(df.columns) > 0:
                 date_column = df.columns[0]
             
             if hours_column is None and len(df.columns) > 1:
                 hours_column = df.columns[1]
             
-            # Check if columns are now available
+            # Prüfen, ob Spalten jetzt verfügbar sind
             if date_column not in df.columns or hours_column not in df.columns:
-                self._show_status("Could not identify date or hours columns.", error=True)
+                self._show_status("Datums- oder Stundenspalten konnten nicht identifiziert werden.", error=True)
                 return []
             
-            # Process the data
+            # Daten verarbeiten
             for index, row in df.iterrows():
                 try:
-                    # Extract date
+                    # Datum extrahieren
                     date_value = row[date_column]
                     
-                    # Convert date to the right format
+                    # Datum in das richtige Format konvertieren
                     if isinstance(date_value, (pd.Timestamp, datetime.datetime, datetime.date)):
                         datum = date_value.strftime('%d.%m.%Y')
                     else:
                         try:
-                            # Try to parse as date
+                            # Versuche als Datum zu parsen
                             datum_obj = pd.to_datetime(date_value)
                             datum = datum_obj.strftime('%d.%m.%Y')
                         except:
-                            # If parsing fails, use the string directly
+                            # Wenn Parsing fehlschlägt, den String direkt verwenden
                             datum = str(date_value)
                     
-                    # Extract hours
+                    # Stunden extrahieren
                     hours_value = row[hours_column]
                     
-                    # Skip rows without hours
+                    # Zeilen ohne Stunden überspringen
                     if pd.isna(hours_value):
                         continue
                     
                     try:
-                        # Convert to float then to string
+                        # In Float und dann in String konvertieren
                         if isinstance(hours_value, str):
                             hours_value = hours_value.replace(',', '.')
                         
-                        stunden = str(float(hours_value))
+                        stunden_float = float(hours_value)
+                        stunden = str(stunden_float)
+                        
+                        # Kapazität berechnen: Stunden >= 8 entsprechen einer Kapazität von 1
+                        if stunden_float >= 8:
+                            kapazitaet = "1.0"
+                        else:
+                            # Anteilige Kapazität berechnen (Stunden/8)
+                            kapazitaet = str(round(stunden_float / 8, 2))
+                        
                     except ValueError:
                         continue
                     
-                    # Add data to the list
-                    processed_data.append([selected_member_id, datum, stunden])
+                    # Daten zur Liste hinzufügen [ID, DATUM, STUNDEN, KAPAZITÄT]
+                    processed_data.append([selected_member_id, datum, stunden, kapazitaet])
                 
                 except Exception:
                     continue
@@ -1446,17 +1463,55 @@ class ImportModal(ctk.CTkToplevel):
             return processed_data
         
         except Exception as e:
-            self._show_status(f"Error processing file: {e}", error=True)
+            self._show_status(f"Fehler bei der Dateiverarbeitung: {e}", error=True)
             return []
         
         finally:
-            # Clean up: Delete temporary files
+            # Bereinigen: Temporäre Dateien löschen
             for temp_file in temp_files:
                 if os.path.exists(temp_file):
                     try:
                         os.remove(temp_file)
                     except:
                         pass
+
+    def _merge_with_existing_data(self, new_data, existing_file_path):
+        """
+        Führt neue Daten mit vorhandenen Daten zusammen, wobei vorhandene Einträge überschrieben werden
+        
+        Args:
+            new_data: Neue Daten [[ID, DATUM, STUNDEN, KAPAZITÄT], ...]
+            existing_file_path: Pfad zur bestehenden CSV-Datei
+                
+        Returns:
+            List[List[str]]: Zusammengeführte Daten
+        """
+        if not os.path.exists(existing_file_path):
+            return new_data
+        
+        try:
+            # Vorhandene Daten einlesen
+            with open(existing_file_path, 'r', newline='', encoding='utf-8') as file:
+                reader = csv.reader(file, delimiter=';')
+                existing_data = list(reader)
+            
+            # Dictionary für schnellere Suche erstellen (ID+DATUM -> Zeilenindex)
+            id_date_indices = {(row[0], row[1]): i for i, row in enumerate(existing_data)}
+            
+            # Neue Daten durchgehen
+            for row in new_data:
+                key = (row[0], row[1])
+                if key in id_date_indices:
+                    # Vorhandenen Eintrag überschreiben
+                    existing_data[id_date_indices[key]] = row
+                else:
+                    # Neuen Eintrag hinzufügen
+                    existing_data.append(row)
+            
+            return existing_data
+        
+        except Exception as e:
+            raise Exception(f"Fehler beim Zusammenführen der Daten: {str(e)}")
     
     
     def _load_project_data(self):
