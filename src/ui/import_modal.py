@@ -1211,19 +1211,18 @@ class ImportModal(ctk.CTkToplevel):
         except Exception as e:
             raise Exception(f"Fehler beim Zusammenführen der Daten: {str(e)}")
     
-    def _process_mime_file(self, file_path, debug_mode=True):
+    def _process_mime_file(self, file_path):
         """
-        Verarbeitet eine MIME-formatierte Datei (z.B. E-Mail oder HTML)
+        Simplified version of the method to process a MIME-formatted file
         
         Args:
-            file_path: Pfad zur MIME/HTML-Datei
-            debug_mode: Aktiviert zusätzliche Debug-Ausgaben
+            file_path: Path to the MIME/HTML file
             
         Returns:
-            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN], ...]
+            List[List[str]]: Processed data in format [[ID, DATE, HOURS], ...]
         """
         try:
-            # Lese den Dateiinhalt mit verschiedenen Kodierungen
+            # Read file content with appropriate encoding
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -1235,565 +1234,230 @@ class ImportModal(ctk.CTkToplevel):
                     with open(file_path, 'r', encoding='cp1252') as f:
                         content = f.read()
             
-            # Import regex und datetime
             import re
             import datetime
             
-            # Liste für die verarbeiteten Daten
+            # List for processed data
             processed_data = []
             
-            # Extrahiere alle Tabellenzeilen
+            # Extract all table rows
             rows = re.findall(r'<tr.*?>(.*?)</tr>', content, re.DOTALL)
             
-            print(f"Gefunden: {len(rows)} Zeilen in der Datei")
-            
-            # Zähler für diagnostische Zwecke
-            cells_too_few = 0
-            no_forecast = 0
-            processed_rows = 0
-            
-            for row_idx, row in enumerate(rows):
-                # Extrahiere alle Zellen in dieser Zeile
+            # Process rows
+            for row in rows:
+                # Extract all cells in this row
                 cells = re.findall(r'<td.*?>(.*?)</td>', row, re.DOTALL)
                 
-                # Debug-Ausgabe für die ersten 5 Zeilen
-                if debug_mode and row_idx < 5:
-                    print(f"\nZeile {row_idx+1} hat {len(cells)} Zellen")
-                    if len(cells) > 0:
-                        for i, cell in enumerate(cells):
-                            if i < 15:  # Zeige die ersten 15 Zellen
-                                cleaned_cell = re.sub(r'<.*?>', '', cell).replace("&#32;", " ").strip()
-                                print(f"  Zelle {i+1}: {cleaned_cell[:30]}")
-                
-                # Überspringe die Zeile, wenn sie nicht genügend Zellen hat
+                # Skip rows with insufficient cells
                 if len(cells) < 13:
-                    cells_too_few += 1
                     continue
                 
                 try:
-                    # Prüfe, ob die Zeile ein Forecast-Eintrag ist (Spalte 11, Index 10)
+                    # Check if this is a forecast entry (column 11, index 10)
                     forecast_cell = cells[10] if len(cells) > 10 else ""
                     forecast_value = re.sub(r'<.*?>', '', forecast_cell).upper().strip()
                     
-                    if debug_mode and row_idx < 5:
-                        print(f"Zeile {row_idx+1} Forecast-Wert: '{forecast_value}'")
-                    
                     if "FCAST" not in forecast_value and "FORECAST" not in forecast_value:
-                        no_forecast += 1
                         continue
                     
-                    # Name (ID) extrahieren
+                    # Extract name (ID)
                     sixth_value = re.sub(r'<.*?>', '', cells[5]).replace("&#32;", " ").strip()
                     if sixth_value == "Fremdleistung OPS" and len(cells) > 6:
                         mitarbeiter_id = re.sub(r'<.*?>', '', cells[6]).replace("&#32;", " ").strip()
                     else:
                         mitarbeiter_id = sixth_value
                     
-                    # Datum extrahieren
+                    # Extract date
                     date_cell = cells[7]
                     date_value = re.sub(r'<.*?>', '', date_cell).strip()
                     try:
-                        # Versuche, einen Excel-Datumswert zu konvertieren
+                        # Try to convert an Excel date value
                         excel_date = int(float(date_value.replace(",", ".")))
                         datetime_date = datetime.datetime(1899, 12, 30) + datetime.timedelta(days=excel_date)
                         datum = datetime_date.strftime('%d.%m.%Y')
                     except ValueError:
-                        # Falls es kein numerischer Wert ist, verwende den Wert direkt
+                        # If it's not a numeric value, use the value directly
                         datum = date_value
                     
-                    # Stunden extrahieren
+                    # Extract hours
                     hours_cell = cells[12]
                     hours_value = re.sub(r'<.*?>', '', hours_cell).strip()
                     try:
                         stunden_float = float(hours_value.replace(",", "."))
                         stunden = str(stunden_float)
                     except ValueError:
-                        stunden = "0.0"  # Fallback, wenn keine gültige Zahl
+                        stunden = "0.0"  # Fallback if not a valid number
                     
-                    # Daten zur Liste hinzufügen
+                    # Add data to the list
                     processed_data.append([mitarbeiter_id, datum, stunden])
-                    processed_rows += 1
                     
-                    if debug_mode and processed_rows <= 5:
-                        print(f"\nErfolgreiche Extraktion aus Zeile {row_idx+1}:")
-                        print(f"ID: {mitarbeiter_id}")
-                        print(f"Datum: {datum}")
-                        print(f"Stunden: {stunden}")
-                
-                except Exception as e:
-                    if debug_mode:
-                        print(f"Fehler bei Zeile {row_idx+1}: {e}")
+                except Exception:
                     continue
-            
-            print(f"\nZusammenfassung:")
-            print(f"Gesamt Zeilen: {len(rows)}")
-            print(f"Zeilen mit zu wenigen Zellen: {cells_too_few}")
-            print(f"Zeilen ohne Forecast: {no_forecast}")
-            print(f"Verarbeitete Zeilen: {processed_rows}")
             
             return processed_data
         
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(f"MIME-Verarbeitung fehlgeschlagen: {e}")
+            self._show_status(f"MIME processing failed: {e}", error=True)
             return []
-    
-    def _process_ar_calendar_file(self, file_path, selected_member_id, debug_mode=True):
+
+
+    def _process_ar_calendar_file(self, file_path, selected_member_id):
         """
-        Extrem robuste Verarbeitung einer Excel-Datei im ARCalendarList-Format
+        Simplified method to process an Excel file in ARCalendarList format
         
         Args:
-            file_path: Pfad zur Excel-Datei
-            selected_member_id: ID des ausgewählten Projektmitglieds
-            debug_mode: Aktiviert zusätzliche Debug-Ausgaben
+            file_path: Path to the Excel file
+            selected_member_id: ID of the selected project member
             
         Returns:
-            List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN], ...]
+            List[List[str]]: Processed data in format [[ID, DATE, HOURS], ...]
         """
         import pandas as pd
         import re
         import datetime
-        import traceback
-        import os
-        import subprocess
         import tempfile
+        import os
         import csv
         
-        # Liste für die verarbeiteten Daten
+        # List for processed data
         processed_data = []
         temp_files = []
         
         try:
-            print(f"Verarbeite ARCalendar-Datei mit robuster Methode: {file_path}")
-            print(f"Ausgewählte Mitarbeiter-ID: {selected_member_id}")
+            # Try different methods to read the Excel file
+            df = None
+            success = False
             
-            # Wir werden mehrere Methoden versuchen
-            # Methode 1: Verwende xlwings falls verfügbar
+            # Method 1: Use pandas directly
             try:
-                print("Versuche Methode 1: xlwings (funktioniert nur auf Windows/Mac mit Excel)...")
-                import xlwings as xw
-                
-                # Erstelle eine temporäre CSV-Datei
-                temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
-                temp_csv.close()
-                temp_files.append(temp_csv.name)
-                
-                # Starte Excel und konvertiere in CSV
-                with xw.App(visible=False) as app:
-                    wb = app.books.open(file_path)
-                    sheet = wb.sheets[0]
-                    
-                    # Bereite CSV-Daten vor
-                    data = []
-                    header = []
-                    
-                    # Hole die Header
-                    for col in range(1, 20):  # Annahme: Nicht mehr als 20 Spalten
-                        cell_value = sheet.cells(1, col).value
-                        if cell_value is None:
-                            break
-                        header.append(cell_value)
-                    
-                    if not header:
-                        raise ValueError("Keine Header gefunden")
-                    
-                    data.append(header)
-                    
-                    # Hole die Daten
-                    for row in range(2, 1000):  # Annahme: Nicht mehr als 1000 Zeilen
-                        row_data = []
-                        empty_cells = 0
-                        
-                        for col in range(1, len(header) + 1):
-                            cell_value = sheet.cells(row, col).value
-                            row_data.append(cell_value)
-                            if cell_value is None:
-                                empty_cells += 1
-                        
-                        # Wenn die Zeile fast leer ist, sind wir am Ende
-                        if empty_cells >= len(header) - 1:
-                            break
-                        
-                        data.append(row_data)
-                    
-                    # Schreibe in CSV
-                    with open(temp_csv.name, 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.writer(f)
-                        for row in data:
-                            writer.writerow(row)
-                    
-                    # Schließe Excel
-                    wb.close()
-                
-                print(f"Datei erfolgreich zu CSV konvertiert: {temp_csv.name}")
-                
-                # Erstelle ein DataFrame aus der CSV
-                df = pd.read_csv(temp_csv.name)
+                df = pd.read_excel(file_path)
                 success = True
+            except Exception:
+                pass
             
-            except Exception as e:
-                print(f"Methode 1 fehlgeschlagen: {str(e)}")
-                success = False
-            
-            # Methode 2: Verwende pyexcel falls verfügbar
+            # Method 2: Convert to CSV first using openpyxl
             if not success:
                 try:
-                    print("Versuche Methode 2: pyexcel...")
-                    import pyexcel as pe
-                    
-                    temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
-                    temp_csv.close()
-                    temp_files.append(temp_csv.name)
-                    
-                    # Konvertiere von Excel zu CSV
-                    pe.save_as(file_name=file_path, dest_file_name=temp_csv.name)
-                    
-                    print(f"Datei erfolgreich zu CSV konvertiert: {temp_csv.name}")
-                    
-                    # Erstelle ein DataFrame aus der CSV
-                    df = pd.read_csv(temp_csv.name)
-                    success = True
-                
-                except Exception as e:
-                    print(f"Methode 2 fehlgeschlagen: {str(e)}")
-                    success = False
-            
-            # Methode 3: Verwende LibreOffice/OpenOffice falls installiert
-            if not success:
-                try:
-                    print("Versuche Methode 3: LibreOffice/OpenOffice...")
-                    
-                    temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
-                    temp_csv.close()
-                    temp_files.append(temp_csv.name)
-                    
-                    # Prüfe auf LibreOffice/OpenOffice
-                    libreoffice_paths = [
-                        '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
-                        'C:\\Program Files\\LibreOffice\\program\\soffice.exe',  # Windows
-                        'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',  # Windows 32-bit
-                        '/usr/bin/libreoffice',  # Linux
-                        '/usr/bin/soffice'  # Linux
-                    ]
-                    
-                    soffice_path = None
-                    for path in libreoffice_paths:
-                        if os.path.exists(path):
-                            soffice_path = path
-                            break
-                    
-                    if soffice_path:
-                        # Konvertiere mit LibreOffice/OpenOffice
-                        cmd = [
-                            soffice_path,
-                            '--headless',
-                            '--convert-to', 'csv',
-                            '--outdir', os.path.dirname(temp_csv.name),
-                            file_path
-                        ]
-                        
-                        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        stdout, stderr = process.communicate()
-                        
-                        if process.returncode != 0:
-                            raise Exception(f"LibreOffice Konvertierung fehlgeschlagen: {stderr.decode('utf-8')}")
-                        
-                        # Finde die generierte CSV-Datei
-                        base_name = os.path.basename(file_path)
-                        csv_name = os.path.splitext(base_name)[0] + '.csv'
-                        generated_csv = os.path.join(os.path.dirname(temp_csv.name), csv_name)
-                        
-                        # Kopiere die generierte Datei an den erwarteten Ort
-                        import shutil
-                        shutil.copy2(generated_csv, temp_csv.name)
-                        
-                        # Lösche die generierte Datei
-                        os.remove(generated_csv)
-                        
-                        print(f"Datei erfolgreich zu CSV konvertiert: {temp_csv.name}")
-                        
-                        # Erstelle ein DataFrame aus der CSV
-                        df = pd.read_csv(temp_csv.name)
-                        success = True
-                    else:
-                        raise Exception("LibreOffice/OpenOffice nicht gefunden")
-                
-                except Exception as e:
-                    print(f"Methode 3 fehlgeschlagen: {str(e)}")
-                    success = False
-            
-            # Methode 4: Manueller Fallback - mit vereinfachtem openpyxl
-            if not success:
-                try:
-                    print("Versuche Methode 4: Vereinfachtes openpyxl...")
-                    
-                    temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
-                    temp_csv.close()
-                    temp_files.append(temp_csv.name)
-                    
                     from openpyxl import load_workbook
-                    from openpyxl.utils.exceptions import InvalidFileException
                     
-                    try:
-                        # Versuche zu laden, ignoriere Stile
-                        wb = load_workbook(filename=file_path, read_only=True, data_only=True, keep_links=False)
-                    except TypeError:
-                        # Fallback für ältere openpyxl-Versionen
-                        wb = load_workbook(filename=file_path, read_only=True, data_only=True)
+                    temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
+                    temp_csv.close()
+                    temp_files.append(temp_csv.name)
                     
+                    # Try to load, ignore styles
+                    wb = load_workbook(filename=file_path, read_only=True, data_only=True)
                     ws = wb.active
                     
-                    # Schreibe in CSV
+                    # Write to CSV
                     with open(temp_csv.name, 'w', newline='', encoding='utf-8') as f:
                         writer = csv.writer(f)
                         for row in ws.iter_rows(values_only=True):
                             writer.writerow(row)
                     
-                    print(f"Datei erfolgreich zu CSV konvertiert: {temp_csv.name}")
-                    
-                    # Erstelle ein DataFrame aus der CSV
+                    # Create DataFrame from CSV
                     df = pd.read_csv(temp_csv.name)
                     success = True
                 
-                except Exception as e:
-                    print(f"Methode 4 fehlgeschlagen: {str(e)}")
-                    success = False
+                except Exception:
+                    pass
             
-            # Methode 5: Manuelle Extraktion mit geringster Abhängigkeit
-            if not success:
-                try:
-                    print("Versuche Methode 5: Extrem robuste manuelle Extraktion...")
-                    
-                    # Erstelle eine Dummy-CSV mit Platzhalterwerten
-                    temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
-                    temp_files.append(temp_csv.name)
-                    
-                    with open(temp_csv.name, 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.writer(f)
-                        writer.writerow(["Date", "TotalHours"])  # Kopfzeile
-                        
-                        # Rohbytes aus der Excel-Datei extrahieren
-                        with open(file_path, 'rb') as excel_file:
-                            excel_data = excel_file.read()
-                        
-                        # Suche nach Datums- und Zahlenwerten in den Rohbytes
-                        date_patterns = [
-                            rb'\d{2}[/.-]\d{2}[/.-]\d{4}',  # DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
-                            rb'\d{4}[/.-]\d{2}[/.-]\d{2}'   # YYYY/MM/DD, YYYY-MM-DD, YYYY.MM.DD
-                        ]
-                        
-                        # Finde alle möglichen Datumsangaben
-                        all_dates = []
-                        for pattern in date_patterns:
-                            matches = re.findall(pattern, excel_data)
-                            all_dates.extend([m.decode('utf-8', errors='ignore') for m in matches])
-                        
-                        # Finde alle möglichen Zahlen (für Stunden)
-                        all_numbers = re.findall(rb'\b\d+\.\d+\b|\b\d+,\d+\b|\b\d+\b', excel_data)
-                        all_numbers = [n.decode('utf-8', errors='ignore') for n in all_numbers]
-                        
-                        # Wenn wir genügend Daten haben, schreiben wir sie in die CSV
-                        if all_dates and all_numbers:
-                            # Filtere die Zahlen, um nur solche zwischen 0.1 und 24 zu behalten (plausible Arbeitsstunden)
-                            filtered_numbers = []
-                            for num in all_numbers:
-                                try:
-                                    value = float(num.replace(',', '.'))
-                                    if 0.1 <= value <= 24:
-                                        filtered_numbers.append(num)
-                                except ValueError:
-                                    continue
-                            
-                            # Nehme die kleinere Anzahl von Daten
-                            rows_count = min(len(all_dates), len(filtered_numbers))
-                            
-                            # Schreibe Zeilen
-                            for i in range(rows_count):
-                                writer.writerow([all_dates[i], filtered_numbers[i]])
-                        else:
-                            raise ValueError("Keine Datums- oder Zahlenwerte gefunden")
-                    
-                    print(f"Datei erfolgreich zu CSV extrahiert: {temp_csv.name}")
-                    
-                    # Erstelle ein DataFrame aus der CSV
-                    df = pd.read_csv(temp_csv.name)
-                    success = True
-                
-                except Exception as e:
-                    print(f"Methode 5 fehlgeschlagen: {str(e)}")
-                    success = False
-            
-            # Wenn keine Methode funktioniert hat
-            if not success:
-                error_message = "Alle Methoden zur Excel-Verarbeitung sind fehlgeschlagen."
-                print(error_message)
-                self._show_status(error_message, error=True)
+            # If we still don't have data, show error
+            if not success or df is None:
+                self._show_status("Failed to read Excel file.", error=True)
                 return []
             
-            print(f"Excel-Datei erfolgreich gelesen: {df.shape[0]} Zeilen, {df.shape[1]} Spalten")
+            # Find the date and hours columns
+            date_column = None
+            hours_column = None
             
-            # Zeige die Spalten zur Überprüfung
-            if debug_mode:
-                print("\nSpaltennamen:")
-                print(df.columns.tolist())
-                print("\nErste 5 Zeilen der CSV-Datei:")
-                print(df.head().to_string())
+            # Look for columns with common names
+            date_keywords = ["date", "datum", "tag", "day", "date1"]
+            hours_keywords = ["total", "hours", "stunden", "zeit", "summe", "totalhours"]
             
-            # Überprüfe, ob die erwarteten Spalten vorhanden sind
-            required_columns = ["Date", "TotalHours"]
-            missing_columns = [col for col in required_columns if col not in df.columns]
-            
-            # Versuche alternative Spaltennamen, falls die Standardnamen nicht gefunden wurden
-            alternative_columns = {}
-            if missing_columns:
-                print(f"Warnung: Folgende Spalten fehlen: {missing_columns}")
-                print("Suche nach alternativen Spaltennamen...")
+            for col in df.columns:
+                col_lower = str(col).lower()
                 
-                # Suche nach Spalten mit ähnlichen Namen
-                column_mapping = {
-                    "Date": ["date", "datum", "tag", "day", "datum", "arbeitszeit", "zeitraum", "day", "date1"],
-                    "TotalHours": ["total", "hours", "stunden", "gesamtstunden", "zeit", "summe", "gesamt", "hours", "totalhours", "total"]
-                }
+                # Check for date column
+                if not date_column:
+                    for kw in date_keywords:
+                        if kw in col_lower:
+                            date_column = col
+                            break
                 
-                for required_col, alternatives in column_mapping.items():
-                    if required_col in missing_columns:
-                        for alt in alternatives:
-                            matching_cols = [col for col in df.columns if isinstance(col, str) and alt.lower() in col.lower()]
-                            if matching_cols:
-                                alternative_columns[required_col] = matching_cols[0]
-                                print(f"Alternative für '{required_col}' gefunden: '{matching_cols[0]}'")
-                                break
+                # Check for hours column
+                if not hours_column:
+                    for kw in hours_keywords:
+                        if kw in col_lower:
+                            hours_column = col
+                            break
             
-            # Aktualisiere die Spaltennamen mit den gefundenen Alternativen
-            date_column = alternative_columns.get("Date", "Date")
-            hours_column = alternative_columns.get("TotalHours", "TotalHours")
+            # If still not found, use first two columns
+            if date_column is None and len(df.columns) > 0:
+                date_column = df.columns[0]
             
-            # Wenn immer noch keine Spalten gefunden wurden, versuche numerische Indizes
+            if hours_column is None and len(df.columns) > 1:
+                hours_column = df.columns[1]
+            
+            # Check if columns are now available
             if date_column not in df.columns or hours_column not in df.columns:
-                print("Keine passenden Spaltennamen gefunden, versuche mit Position der Spalten")
-                # Zeige alle verfügbaren Spalten
-                for i, col in enumerate(df.columns):
-                    print(f"Spalte {i}: {col}")
-                
-                # Versuche die ersten beiden Spalten zu verwenden, wenn sie nicht gefunden wurden
-                if date_column not in df.columns and len(df.columns) > 0:
-                    date_column = df.columns[0]
-                    print(f"Verwende erste Spalte als Datumsspalte: {date_column}")
-                
-                if hours_column not in df.columns and len(df.columns) > 1:
-                    hours_column = df.columns[1]
-                    print(f"Verwende zweite Spalte als Stundenspalte: {hours_column}")
-            
-            # Überprüfe erneut, ob die Spalten jetzt verfügbar sind
-            if date_column not in df.columns:
-                print(f"Fehler: Keine geeignete Spalte für Datum gefunden!")
-                self._show_status("Konnte keine Datumsspalte in der CSV-Datei identifizieren.", error=True)
+                self._show_status("Could not identify date or hours columns.", error=True)
                 return []
             
-            if hours_column not in df.columns:
-                print(f"Fehler: Keine geeignete Spalte für Stunden gefunden!")
-                self._show_status("Konnte keine Stundenspalte in der CSV-Datei identifizieren.", error=True)
-                return []
-            
-            # Verarbeite die Daten
-            processed_rows = 0
-            
+            # Process the data
             for index, row in df.iterrows():
                 try:
-                    # Extrahiere das Datum
+                    # Extract date
                     date_value = row[date_column]
                     
-                    # Konvertiere das Datum ins richtige Format
+                    # Convert date to the right format
                     if isinstance(date_value, (pd.Timestamp, datetime.datetime, datetime.date)):
-                        # Pandas Timestamp direkt formatieren
                         datum = date_value.strftime('%d.%m.%Y')
                     else:
                         try:
-                            # Versuche, den Wert als Datum zu parsen
+                            # Try to parse as date
                             datum_obj = pd.to_datetime(date_value)
                             datum = datum_obj.strftime('%d.%m.%Y')
                         except:
-                            # Wenn das Parsen fehlschlägt, versuche zu prüfen, ob es ein Datums-String ist
-                            date_str = str(date_value)
-                            if re.match(r'\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}', date_str) or re.match(r'\d{4}[/.-]\d{1,2}[/.-]\d{1,2}', date_str):
-                                # Versuche das Format zu bestimmen und zu konvertieren
-                                formats = ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d']
-                                converted = False
-                                for fmt in formats:
-                                    try:
-                                        datum_obj = datetime.datetime.strptime(date_str, fmt)
-                                        datum = datum_obj.strftime('%d.%m.%Y')
-                                        converted = True
-                                        break
-                                    except:
-                                        continue
-                                
-                                if not converted:
-                                    datum = date_str
-                            else:
-                                datum = date_str
+                            # If parsing fails, use the string directly
+                            datum = str(date_value)
                     
-                    # Extrahiere die Stunden
+                    # Extract hours
                     hours_value = row[hours_column]
                     
-                    # Konvertiere die Stunden in eine Zahl
+                    # Skip rows without hours
                     if pd.isna(hours_value):
-                        # Überspringe Zeilen ohne Stundenwert
                         continue
                     
                     try:
-                        # Konvertiere in float und dann in String
+                        # Convert to float then to string
                         if isinstance(hours_value, str):
-                            # Kommas durch Punkte ersetzen
                             hours_value = hours_value.replace(',', '.')
                         
                         stunden = str(float(hours_value))
                     except ValueError:
-                        # Wenn die Konvertierung fehlschlägt, überspringe die Zeile
-                        print(f"Ungültiger Stundenwert in Zeile {index+2}: {hours_value}")
                         continue
                     
-                    # Füge die Daten zur Liste hinzu
+                    # Add data to the list
                     processed_data.append([selected_member_id, datum, stunden])
-                    processed_rows += 1
-                    
-                    # Debug-Ausgabe für erfolgreiche Extraktion
-                    if debug_mode and processed_rows <= 5:
-                        print(f"\nErfolgreiche Extraktion aus Zeile {index+2}:")
-                        print(f"ID: {selected_member_id}")
-                        print(f"Datum: {datum}")
-                        print(f"Stunden: {stunden}")
                 
-                except Exception as e:
-                    print(f"Fehler beim Verarbeiten von Zeile {index+2}: {e}")
-                    if debug_mode:
-                        traceback.print_exc()
+                except Exception:
                     continue
-            
-            print(f"\nVerarbeitungsstatistik:")
-            print(f"Gesamt Zeilen in CSV: {len(df)}")
-            print(f"Erfolgreich verarbeitete Zeilen: {processed_rows}")
-            print(f"Extrahierte Datensätze: {len(processed_data)}")
             
             return processed_data
         
         except Exception as e:
-            error_message = f"Allgemeiner Fehler bei der Verarbeitung: {e}"
-            print(error_message)
-            traceback.print_exc()
-            self._show_status(error_message, error=True)
+            self._show_status(f"Error processing file: {e}", error=True)
             return []
         
         finally:
-            # Aufräumen: Temporäre Dateien löschen
+            # Clean up: Delete temporary files
             for temp_file in temp_files:
                 if os.path.exists(temp_file):
                     try:
-                        print(f"Lösche temporäre Datei: {temp_file}")
                         os.remove(temp_file)
-                    except Exception as e:
-                        print(f"Warnung: Konnte temporäre Datei nicht löschen: {e}")
+                    except:
+                        pass
+    
     
     def _load_project_data(self):
         """

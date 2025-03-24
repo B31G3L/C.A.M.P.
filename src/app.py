@@ -11,8 +11,6 @@ from src.ui.camp_manager_modal import CAMPManagerModal
 from src.ui.import_modal import ImportModal
 
 
-
-
 class CAMPApp:
     """
     Hauptanwendungsklasse für die CAMP-Anwendung
@@ -86,7 +84,6 @@ class CAMPApp:
             "import_data": self._show_import_data,
             "create_markup": self._create_markup,
             "camp_manager": self._show_camp_manager,
-
             
             # Dropdown-Callbacks für Projekt
             "new_project": self._new_project,
@@ -104,13 +101,10 @@ class CAMPApp:
     
     def _on_close(self):
         """Wird aufgerufen, wenn das Fenster geschlossen wird"""
-        # Hier könnte geprüft werden, ob ungespeicherte Änderungen vorliegen
         self.root.destroy()
     
     def _show_data(self):
         """Zeigt die Daten aus der CSV-Datei in einem Modal-Fenster an"""
-        print("Daten")
-        
         # Erstelle und zeige das Daten-Modal
         data_modal = DataModal(self.root, self.csv_path)
         
@@ -122,63 +116,42 @@ class CAMPApp:
     
     def _create_markup(self):
         """Erstellt Markup-Text und kopiert ihn in die Zwischenablage"""
-        print("Markup erstellen/kopieren")
-        # Hier später den Markup-Text generieren und in die Zwischenablage kopieren
         self.main_view.show_message("Markup wurde erstellt und kopiert")
     
     def _new_project(self):
         """Erstellt ein neues Projekt"""
-        print("Neues Projekt erstellen")
-        # Hier später einen Dialog zum Erstellen eines neuen Projekts öffnen
         self.main_view.show_message("Neues Projekt erstellt")
     
     def _open_project(self):
         """Öffnet ein bestehendes Projekt"""
-        print("Projekt öffnen")
-        # Hier später einen Dialog zum Öffnen eines Projekts anzeigen
         self.main_view.show_message("Projekt geöffnet")
     
     def _save_project(self):
         """Speichert das aktuelle Projekt"""
-        print("Projekt speichern")
-        # Hier später das aktuelle Projekt speichern
         self.main_view.show_message("Projekt gespeichert")
     
     def _delete_project(self):
         """Löscht das aktuelle Projekt"""
-        print("Projekt löschen")
-        # Hier später einen Dialog zur Bestätigung anzeigen und dann das Projekt löschen
         self.main_view.show_message("Projekt gelöscht")
     
     def _new_sprint(self):
         """Erstellt einen neuen Sprint"""
-        print("Neuen Sprint erstellen")
-        # Hier später einen Dialog zum Erstellen eines neuen Sprints öffnen
         self.main_view.show_message("Neuer Sprint erstellt")
     
     def _edit_sprint(self):
         """Bearbeitet den aktuellen Sprint"""
-        print("Sprint bearbeiten")
-        # Hier später einen Dialog zum Bearbeiten des aktuellen Sprints öffnen
         self.main_view.show_message("Sprint bearbeitet")
     
     def _complete_sprint(self):
         """Schließt den aktuellen Sprint ab"""
-        print("Sprint abschließen")
-        # Hier später einen Dialog zum Abschließen des Sprints anzeigen
         self.main_view.show_message("Sprint abgeschlossen")
     
     def _refresh_data(self):
         """Aktualisiert die angezeigten Daten"""
-        print("Daten aktualisieren")
-        # Hier später die Daten neu laden und anzeigen
         self.main_view.show_message("Daten aktualisiert")
 
-    # Füge diese Methode zur CAMPApp-Klasse hinzu:
     def _show_camp_manager(self):
         """Zeigt das CAMP Manager Modal an"""
-        print("CAMP Manager öffnen")
-        
         # Erstelle und zeige das CAMP Manager-Modal
         manager_modal = CAMPManagerModal(self.root, self._get_toolbar_callbacks())
         
@@ -188,24 +161,8 @@ class CAMPApp:
         # Aktualisiere die Statusanzeige in der Hauptansicht
         self.main_view.show_message("CAMP Manager wurde geschlossen")
 
-    def _show_camp_manager(self):
-        """Zeigt das CAMP Manager Modal an"""
-        print("CAMP Manager öffnen")
-        
-        # Erstelle und zeige das CAMP Manager-Modal
-        manager_modal = CAMPManagerModal(self.root, self._get_toolbar_callbacks())
-        
-        # Warte, bis das Modal geschlossen wird
-        self.root.wait_window(manager_modal)
-        
-        # Aktualisiere die Statusanzeige in der Hauptansicht
-        self.main_view.show_message("CAMP Manager wurde geschlossen")
-
-    # Neue Methode für die CAMPApp-Klasse:
     def _show_import_data(self):
         """Zeigt das Import-Daten-Modal an"""
-        print("Import-Daten-Modal öffnen")
-        
         # Erstelle und zeige das Import-Modal
         import_modal = ImportModal(self.root, self._get_toolbar_callbacks())
         

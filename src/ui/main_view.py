@@ -53,28 +53,3 @@ class MainView(ctk.CTkFrame):
             message: Die anzuzeigende Nachricht
         """
         self.status_label.configure(text=message)
-    
-    def clear(self):
-        """Löscht den Inhalt der Hauptansicht"""
-        # Hier später den Inhalt der Hauptansicht löschen
-        pass
-    
-    def show_project_data(self, project_data):
-        """
-        Zeigt die Daten eines Projekts an
-        
-        Args:
-            project_data: Die anzuzeigenden Projektdaten
-        """
-        # Hier später die Projektdaten anzeigen
-        self.placeholder_label.configure(text=f"Projektdaten werden angezeigt: {project_data}")
-    
-    def show_sprint_data(self, sprint_data):
-        """
-        Zeigt die Daten eines Sprints an
-        
-        Args:
-            sprint_data: Die anzuzeigenden Sprint-Daten
-        """
-        # Hier später die Sprint-Daten anzeigen
-        self.placeholder_label.configure(text=f"Sprint-Daten werden angezeigt: {sprint_data}")

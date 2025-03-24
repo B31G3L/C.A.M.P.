@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # CAMP - Capacity Analysis & Management Planner
 
 CAMP ist ein Tool zur Verwaltung und Analyse von Projektkapazitäten und Sprints.
@@ -28,6 +27,7 @@ python main.py
 - Verwaltung von Projekten und Sprints
 - Anzeige von Kapazitätsdaten
 - Erstellung von Markup für Dokumentation
+- Import von Zeiterfassungs- und Projektdaten
 
 ## Projektstruktur
 
@@ -40,7 +40,10 @@ camp/
     ├── app.py           # Hauptanwendungsklasse
     ├── ui/              # UI-Komponenten
     │   ├── toolbar.py   # Toolbar-Definition
-    │   └── main_view.py # Hauptansicht
+    │   ├── main_view.py # Hauptansicht
+    │   ├── data_modal.py # Datendarstellung
+    │   ├── camp_manager_modal.py # Manager für Projekte und Mitarbeiter
+    │   └── import_modal.py # Import-Funktionalität
     ├── models/          # Datenmodelle
     │   ├── project.py   # Projekt-Modell
     │   └── sprint.py    # Sprint-Modell
@@ -51,7 +54,3 @@ camp/
 ## Lizenz
 
 [MIT](LICENSE)
-=======
-# C.A.M.P.
-Capacity Analysis &amp; Management Planner
->>>>>>> bb1cdaaf98413ea982a9a8993a453a099e2b3bd5
