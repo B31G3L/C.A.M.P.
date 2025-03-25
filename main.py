@@ -5,18 +5,24 @@ Einstiegspunkt der Anwendung
 import os
 import sys
 import customtkinter as ctk
+from src.utils.config_loader import load_config
 
-# Füge den Projektpfad zum Systempfad hinzu
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
+# Konfiguration laden
+config = load_config()
 
-from src.app import CAMPApp
+# Anwendungseinstellungen
+ctk.set_appearance_mode(config.DEFAULT_THEME)
+ctk.set_default_color_theme(config.DEFAULT_COLOR_SCHEME)
+
+# Stelle sicher, dass die Datenverzeichnisse existieren
+os.makedirs(config.DATA_DIR, exist_ok=True)
+os.makedirs(config.BACKUP_DIR, exist_ok=True)
+os.makedirs(config.EXPORT_DIR, exist_ok=True)
+
+# Importiere die Hauptanwendungsklasse
+from src.core.app import CAMPApp
 
 if __name__ == "__main__":
-    # Anwendungseinstellungen
-    ctk.set_appearance_mode("Light")  # "System", "Dark" oder "Light"
-    ctk.set_default_color_theme("blue")  # "blue", "dark-blue", "green"
-    
     # Erstelle das Hauptfenster
     root = ctk.CTk()
     app = CAMPApp(root)
