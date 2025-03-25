@@ -253,7 +253,7 @@ class MainView(ctk.CTkFrame):
         self.show_message(f"Projekt '{project_name}' geladen")
     
     def _update_sprint_list(self):
-        """Aktualisiert die Liste der Sprints für das aktuelle Projekt"""
+        """Aktualisiert die Liste der Sprints für das aktuelle Projekt mit einklappbaren vergangenen Sprints"""
         # Lösche alle vorhandenen Widgets
         for widget in self.sprint_list_frame.winfo_children():
             widget.destroy()
@@ -282,85 +282,192 @@ class MainView(ctk.CTkFrame):
             key=lambda s: self._parse_date(s.get("start", "01.01.2000"))
         )
         
-        # Aktiven Sprint finden
+        # Teile Sprints in vergangene, aktive und kommende ein
+        past_sprints = []
         active_sprint = None
+        future_sprints = []
+        
         for sprint in sprints:
             start_date = self._parse_date(sprint.get("start", "01.01.2000"))
             end_date = self._parse_date(sprint.get("ende", "01.01.2000"))
             
-            if start_date <= now <= end_date:
+            if end_date < now:
+                past_sprints.append(sprint)
+            elif start_date <= now <= end_date:
                 active_sprint = sprint
-                break
+            else:  # start_date > now
+                future_sprints.append(sprint)
         
-        # Sprints darstellen
-        for i, sprint in enumerate(sprints):
-            sprint_name = sprint.get("sprint_name", f"Sprint {i+1}")
-            start_date = self._parse_date(sprint.get("start", "01.01.2000"))
-            end_date = self._parse_date(sprint.get("ende", "01.01.2000"))
-            
-            # Rahmen für Sprint
-            sprint_frame = ctk.CTkFrame(self.sprint_list_frame)
-            sprint_frame.pack(fill="x", padx=5, pady=3)
-            
-            # Sprint-Status bestimmen (vergangen, aktiv, zukünftig)
-            if start_date <= now <= end_date:
-                # Aktiver Sprint
-                status = "Aktiv"
-                status_color = "green"
-                bg_color = ("light green", "dark green")
-            elif end_date < now:
-                # Vergangener Sprint
-                status = "Vergangen"
-                status_color = "gray"
-                bg_color = ("gray90", "gray20")
-            else:
-                # Zukünftiger Sprint
-                status = "Geplant"
-                status_color = "blue"
-                bg_color = ("gray80", "gray30")
-            
-            # Hintergrundfarbe für Sprint-Rahmen
-            sprint_frame.configure(fg_color=bg_color)
-            
-            # Sprint-Label
-            sprint_label = ctk.CTkLabel(
-                sprint_frame,
-                text=sprint_name,
-                font=ctk.CTkFont(size=12, weight="bold"),
-                anchor="w"
-            )
-            sprint_label.pack(fill="x", padx=10, pady=(5, 2))
-            
-            # Datum-Label
-            date_label = ctk.CTkLabel(
-                sprint_frame,
-                text=f"{sprint.get('start', '')} - {sprint.get('ende', '')}",
-                font=ctk.CTkFont(size=10),
-                anchor="w"
-            )
-            date_label.pack(fill="x", padx=10, pady=(0, 2))
-            
-            # Status-Label
-            status_label = ctk.CTkLabel(
-                sprint_frame,
-                text=f"Status: {status}",
-                font=ctk.CTkFont(size=10),
-                text_color=status_color,
-                anchor="w"
-            )
-            status_label.pack(fill="x", padx=10, pady=(0, 5))
-            
-            # Event-Binding für Klicks
-            sprint_frame.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
-            sprint_label.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
-            date_label.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
-            status_label.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
+        # Sollte ein bestimmter Sprint ausgewählt werden?
+        sprint_to_select = None
         
-        # Wähle den aktiven Sprint aus, wenn vorhanden, sonst den neuesten
+        # Abschnitt für aktiven Sprint
         if active_sprint:
-            self._on_sprint_selected(active_sprint)
-        elif sprints:
-            self._on_sprint_selected(sprints[-1])
+            active_title = ctk.CTkLabel(
+                self.sprint_list_frame, 
+                text="Aktiver Sprint",
+                font=ctk.CTkFont(size=14, weight="bold")
+            )
+            active_title.pack(anchor="w", padx=5, pady=(10, 5))
+            self._create_sprint_item(active_sprint, True)  # True = aktiver Sprint
+            sprint_to_select = active_sprint
+        
+        # Abschnitt für kommende Sprints
+        if future_sprints:
+            future_title = ctk.CTkLabel(
+                self.sprint_list_frame, 
+                text="Kommende Sprints",
+                font=ctk.CTkFont(size=14, weight="bold")
+            )
+            future_title.pack(anchor="w", padx=5, pady=(10, 5))
+            
+            for sprint in future_sprints:
+                self._create_sprint_item(sprint, False)
+            
+            # Wenn kein aktiver Sprint, den ersten kommenden auswählen
+            if not sprint_to_select:
+                sprint_to_select = future_sprints[0]
+        
+        # Abschnitt für vergangene Sprints (einklappbar)
+        if past_sprints:
+            # Container für den Header mit Toggle-Button
+            past_header_frame = ctk.CTkFrame(self.sprint_list_frame)
+            past_header_frame.pack(fill="x", padx=5, pady=(15, 0))
+            
+            # Text-Button zum Ein-/Ausklappen
+            self.past_expanded = ctk.BooleanVar(value=False)  # Standardmäßig eingeklappt
+            
+            past_toggle_button = ctk.CTkButton(
+                past_header_frame,
+                text="► Vergangene Sprints",  # ► für eingeklappt
+                font=ctk.CTkFont(size=14, weight="bold"),
+                command=self._toggle_past_sprints,
+                fg_color="transparent",
+                text_color=("gray10", "gray90"),
+                hover_color=("gray75", "gray25"),
+                anchor="w",
+                width=200
+            )
+            past_toggle_button.pack(side="left", fill="x", expand=True, padx=0, pady=0)
+            
+            # Anzahl der vergangenen Sprints anzeigen
+            past_count_label = ctk.CTkLabel(
+                past_header_frame,
+                text=f"({len(past_sprints)})",
+                font=ctk.CTkFont(size=12),
+                text_color=("gray50", "gray70")
+            )
+            past_count_label.pack(side="right", padx=10)
+            
+            # Container für vergangene Sprints (standardmäßig versteckt)
+            self.past_sprints_frame = ctk.CTkFrame(self.sprint_list_frame)
+            # Wird erst beim Ausklappen angezeigt
+            
+            # Vergangene Sprints zum Container hinzufügen (werden erst sichtbar beim Ausklappen)
+            for sprint in past_sprints:
+                self._create_sprint_item(sprint, False, parent=self.past_sprints_frame)
+            
+            # Speichere Referenzen für das Ein-/Ausklappen
+            self.past_toggle_button = past_toggle_button
+            self.past_sprint_count = len(past_sprints)
+        
+        # Wenn weder aktiver noch kommender Sprint vorhanden ist, den neuesten vergangenen auswählen
+        if not sprint_to_select and past_sprints:
+            sprint_to_select = past_sprints[-1]  # Der letzte der vergangenen (also neueste)
+        
+        # Wähle den Sprint aus
+        if sprint_to_select:
+            self._on_sprint_selected(sprint_to_select)
+
+    def _create_sprint_item(self, sprint, is_active=False, parent=None):
+        """
+        Erstellt ein einzelnes Sprint-Item in der Sprint-Liste
+        
+        Args:
+            sprint: Der darzustellende Sprint
+            is_active: Ob dies der aktive Sprint ist
+            parent: Optional - Das Eltern-Widget (standardmäßig self.sprint_list_frame)
+        """
+        if parent is None:
+            parent = self.sprint_list_frame
+        
+        sprint_name = sprint.get("sprint_name", "Unbenannt")
+        start_date = self._parse_date(sprint.get("start", "01.01.2000"))
+        end_date = self._parse_date(sprint.get("ende", "01.01.2000"))
+        
+        # Rahmen für Sprint
+        sprint_frame = ctk.CTkFrame(parent)
+        sprint_frame.pack(fill="x", padx=5, pady=3)
+        
+        # Aktuelles Datum für Vergleich
+        now = datetime.now()
+        
+        # Sprint-Status bestimmen (vergangen, aktiv, zukünftig)
+        if start_date <= now <= end_date:
+            # Aktiver Sprint
+            status = "Aktiv"
+            status_color = "green"
+            bg_color = ("light green", "dark green")
+        elif end_date < now:
+            # Vergangener Sprint
+            status = "Vergangen"
+            status_color = "gray"
+            bg_color = ("gray90", "gray20")
+        else:
+            # Zukünftiger Sprint
+            status = "Geplant"
+            status_color = "blue"
+            bg_color = ("gray80", "gray30")
+        
+        # Hintergrundfarbe für Sprint-Rahmen
+        sprint_frame.configure(fg_color=bg_color)
+        
+        # Sprint-Label
+        sprint_label = ctk.CTkLabel(
+            sprint_frame,
+            text=sprint_name,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            anchor="w"
+        )
+        sprint_label.pack(fill="x", padx=10, pady=(5, 2))
+        
+        # Datum-Label
+        date_label = ctk.CTkLabel(
+            sprint_frame,
+            text=f"{sprint.get('start', '')} - {sprint.get('ende', '')}",
+            font=ctk.CTkFont(size=10),
+            anchor="w"
+        )
+        date_label.pack(fill="x", padx=10, pady=(0, 2))
+        
+        # Status-Label
+        status_label = ctk.CTkLabel(
+            sprint_frame,
+            text=f"Status: {status}",
+            font=ctk.CTkFont(size=10),
+            text_color=status_color,
+            anchor="w"
+        )
+        status_label.pack(fill="x", padx=10, pady=(0, 5))
+        
+        # Event-Binding für Klicks
+        sprint_frame.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
+        sprint_label.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
+        date_label.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
+        status_label.bind("<Button-1>", lambda e, s=sprint: self._on_sprint_selected(s))
+
+    def _toggle_past_sprints(self):
+        """Klappt die vergangenen Sprints ein oder aus"""
+        if self.past_expanded.get():
+            # Einklappen
+            self.past_expanded.set(False)
+            self.past_toggle_button.configure(text=f"► Vergangene Sprints")
+            self.past_sprints_frame.pack_forget()
+        else:
+            # Ausklappen
+            self.past_expanded.set(True)
+            self.past_toggle_button.configure(text=f"▼ Vergangene Sprints")
+            self.past_sprints_frame.pack(fill="x", padx=0, pady=(0, 5))
     
     def _on_sprint_selected(self, sprint):
         """
