@@ -26,7 +26,7 @@ class DataModal(ctk.CTkToplevel):
         self.withdraw()
         
         # Fenster-Konfiguration
-        self.title("CSV-Daten Anzeige")
+        self.title("Daten")
         self.geometry("800x600")
         self.transient(master)  # Macht das Fenster zum Modal-Fenster
         self.grab_set()         # Blockiert Interaktion mit dem Hauptfenster
@@ -55,13 +55,7 @@ class DataModal(ctk.CTkToplevel):
     
     def _create_widgets(self):
         """Erstellt alle UI-Elemente für das Modal"""
-        # Titel-Frame
-        self.title_frame = ctk.CTkFrame(self)
-        self.title_label = ctk.CTkLabel(
-            self.title_frame, 
-            text="CSV-Daten",
-            font=ctk.CTkFont(size=18, weight="bold")
-        )
+        
         
         # Such-Frame
         self.search_frame = ctk.CTkFrame(self)
@@ -156,12 +150,8 @@ class DataModal(ctk.CTkToplevel):
 
     def _setup_layout(self):
         """Richtet das Layout der UI-Elemente ein"""
-        # Titel-Frame
-        self.title_frame.pack(fill="x", padx=15, pady=(15, 5))
-        self.title_label.pack(anchor="w", padx=10, pady=5)
         
         # Info-Frame
-        self.info_frame.pack(fill="x", padx=15, pady=5)
         self.file_label.pack(anchor="w", padx=10, pady=2)
         self.count_label.pack(anchor="w", padx=10, pady=2)
         
@@ -174,7 +164,8 @@ class DataModal(ctk.CTkToplevel):
         
         # Tabellen-Frame (nimmt den meisten Platz ein)
         self.table_frame.pack(fill="both", expand=True, padx=15, pady=10)
-        
+        self.info_frame.pack(fill="x", padx=15, pady=5)
+
         # Lösch-Info-Frame (jetzt unter der Tabelle)
         self.delete_info_frame.pack(fill="x", padx=15, pady=(0, 5))
         self.delete_info_label.pack(fill="x", padx=10, pady=2)
