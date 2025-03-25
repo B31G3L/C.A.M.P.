@@ -67,7 +67,7 @@ class MainView(ctk.CTkFrame):
         self.main_container = ctk.CTkFrame(self)
         
         # Links: Sprint-Liste
-        self.sprint_frame = ctk.CTkFrame(self.main_container, width=250)
+        self.sprint_frame = ctk.CTkFrame(self.main_container)
         
         self.sprint_label = ctk.CTkLabel(
             self.sprint_frame,
@@ -76,13 +76,11 @@ class MainView(ctk.CTkFrame):
         )
         
         self.sprint_list_frame = ctk.CTkScrollableFrame(
-            self.sprint_frame,
-            width=220,
-            height=300  # Verringerte Höhe für die obere Ansicht
+            self.sprint_frame
         )
         
         # Mitte: Sprint-Details
-        self.details_frame = ctk.CTkFrame(self.main_container, width=400)
+        self.details_frame = ctk.CTkFrame(self.main_container)
         
         self.details_label = ctk.CTkLabel(
             self.details_frame,
@@ -91,14 +89,12 @@ class MainView(ctk.CTkFrame):
         )
         
         self.sprint_details = ctk.CTkTextbox(
-            self.details_frame,
-            width=380,
-            height=300  # Verringerte Höhe für die obere Ansicht
+            self.details_frame
         )
         self.sprint_details.configure(state="disabled")
         
         # Rechts: Team-Mitglieder und Auslastung
-        self.team_frame = ctk.CTkFrame(self.main_container, width=300)
+        self.team_frame = ctk.CTkFrame(self.main_container)
         
         self.team_label = ctk.CTkLabel(
             self.team_frame,
@@ -107,9 +103,7 @@ class MainView(ctk.CTkFrame):
         )
         
         self.team_list_frame = ctk.CTkScrollableFrame(
-            self.team_frame,
-            width=280,
-            height=300  # Verringerte Höhe für die obere Ansicht
+            self.team_frame
         )
 
         # Kalender-Container (unten)
@@ -130,18 +124,26 @@ class MainView(ctk.CTkFrame):
 
     def _setup_layout(self):
         """Richtet das Layout der UI-Elemente ein"""
+        # Haupt-Layout: Vertikales Grid mit 2 Zeilen gleicher Höhe
+        self.grid_rowconfigure(0, weight=0)  # Für top_frame
+        self.grid_rowconfigure(1, weight=1)  # Für main_container
+        self.grid_rowconfigure(2, weight=1)  # Für calendar_container
+        self.grid_rowconfigure(3, weight=0)  # Für status_bar
+        self.grid_columnconfigure(0, weight=1)  # Eine Spalte für alles
+        
         # Oberer Frame (Projekt-Auswahl)
-        self.top_frame.pack(fill="x", padx=10, pady=10)
+        self.top_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         self.project_label.pack(side="left", padx=(10, 5))
         self.project_dropdown.pack(side="left", padx=5)
         
-        # Haupt-Container
-        self.main_container.pack(fill="x", padx=10, pady=5)
+        # Haupt-Container (obere Hälfte - Sprint-Liste, Sprint-Details, Team)
+        self.main_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
         
-        # Spalten konfigurieren
+        # Spalten im Haupt-Container konfigurieren
         self.main_container.grid_columnconfigure(0, weight=1)
         self.main_container.grid_columnconfigure(1, weight=2)
         self.main_container.grid_columnconfigure(2, weight=1)
+        self.main_container.grid_rowconfigure(0, weight=1)  # Zeile soll sich ausdehnen
         
         # Links: Sprint-Liste
         self.sprint_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
@@ -158,15 +160,17 @@ class MainView(ctk.CTkFrame):
         self.team_label.pack(anchor="n", pady=10)
         self.team_list_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Unten: Kalender Container
-        self.calendar_container.pack(fill="both", expand=True, padx=10, pady=10)
-        self.calendar_label.pack(anchor="n", pady=10)
+        # Kalender-Container (untere Hälfte)
+        self.calendar_container.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
+        self.calendar_container.grid_rowconfigure(0, weight=0)  # Für den Titel
+        self.calendar_container.grid_rowconfigure(1, weight=1)  # Für den Kalender
+        self.calendar_container.grid_columnconfigure(0, weight=1)
         
-        # Kalender direkt
-        self.calendar_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.calendar_label.grid(row=0, column=0, sticky="nw", padx=5, pady=5)
+        self.calendar_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         
         # Statusleiste am unteren Rand
-        self.status_bar.pack(side="bottom", fill="x")
+        self.status_bar.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
         self.status_label.pack(side="left", padx=10, pady=2, fill="x", expand=True)
     
     def _load_project_data(self):
@@ -381,14 +385,14 @@ class MainView(ctk.CTkFrame):
     
     def _update_sprint_details(self):
         """Aktualisiert die Anzeige der Sprint-Details im Dashboard-Stil"""
-        # Bestehende Sprint-Details-Widgets entfernen
-        self.sprint_details.destroy()
+        # Bestehenden Inhalt im Sprint-Details-Frame löschen
+        for widget in self.details_frame.winfo_children():
+            if widget != self.details_label:  # Den Titel behalten
+                widget.destroy()
         
         # Container für das Dashboard erstellen
         self.sprint_details = ctk.CTkScrollableFrame(
-            self.details_frame,
-            width=380,
-            height=300
+            self.details_frame
         )
         self.sprint_details.pack(fill="both", expand=True, padx=10, pady=10)
         
@@ -415,7 +419,7 @@ class MainView(ctk.CTkFrame):
         umrechnungsfaktor = 1.4
         
         # Berechnete Story Points
-        berechnete_sp = total_capacity / umrechnungsfaktor
+        berechnete_sp = total_capacity / umrechnungsfaktor if total_capacity > 0 else 0
         
         # Header mit Sprint-Namen
         header_frame = ctk.CTkFrame(self.sprint_details, fg_color=("blue", "dark blue"), corner_radius=8)
@@ -476,49 +480,18 @@ class MainView(ctk.CTkFrame):
             "Berechnete SP (Kapazität/Faktor)"
         )
         sp_card.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
-    def _create_card(self, parent, title, value, description=None):
-        """Erstellt eine Dashboard-Karte mit Titel, Wert und optionaler Beschreibung"""
-        card = ctk.CTkFrame(parent, corner_radius=10)
-        
-        # Titel
-        title_label = ctk.CTkLabel(
-            card,
-            text=title,
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        title_label.pack(anchor="n", pady=(15, 5))
-        
-        # Wert (groß)
-        value_label = ctk.CTkLabel(
-            card,
-            text=value,
-            font=ctk.CTkFont(size=24, weight="bold")
-        )
-        value_label.pack(pady=10)
-        
-        # Beschreibung (optional)
-        if description:
-            desc_label = ctk.CTkLabel(
-                card,
-                text=description,
-                font=ctk.CTkFont(size=10),
-                text_color=("gray60", "gray70")
-            )
-            desc_label.pack(pady=(0, 15))
-        
-        return card
 
+        
     def _clear_sprint_details(self):
         """Leert die Sprint-Details"""
-        # Falls bereits ein Dashboard existiert, entferne es
-        if hasattr(self, 'sprint_details') and self.sprint_details:
-            self.sprint_details.destroy()
+        # Bestehenden Inhalt im Sprint-Details-Frame löschen (außer dem Titel)
+        for widget in self.details_frame.winfo_children():
+            if widget != self.details_label:  # Den Titel behalten
+                widget.destroy()
         
         # Container für das Dashboard erstellen
         self.sprint_details = ctk.CTkScrollableFrame(
-            self.details_frame,
-            width=380,
-            height=300
+            self.details_frame
         )
         self.sprint_details.pack(fill="both", expand=True, padx=10, pady=10)
         
@@ -564,96 +537,121 @@ class MainView(ctk.CTkFrame):
             capacity_data[member_id] = hours
             kapa_data[member_id] = capacity
         
-        # Überschriften
-        header_frame = ctk.CTkFrame(self.team_list_frame)
-        header_frame.pack(fill="x", padx=5, pady=5)
+        # Container für die Tabelle
+        table_container = ctk.CTkFrame(self.team_list_frame)
+        table_container.pack(fill="both", expand=True, padx=5, pady=5)
         
+        # Konfiguriere das Grid-Layout mit dynamischen Spaltenbreiten
+        # Mindestbreiten und Gewichtungen für jede Spalte
+        col_configs = [
+            {"minsize": 150, "weight": 3},  # Name (breiteste Spalte)
+            {"minsize": 90, "weight": 2},   # Rolle (mittlere Breite)
+            {"minsize": 60, "weight": 1},   # Stunden (schmalste Spalte)
+            {"minsize": 70, "weight": 1}    # Kapazität (schmalste Spalte)
+        ]
+        
+        # Spalten-Konfiguration auf den Hauptcontainer anwenden
+        for i, config in enumerate(col_configs):
+            table_container.grid_columnconfigure(
+                i, 
+                minsize=config["minsize"], 
+                weight=config["weight"]
+            )
+        
+        # Header-Labels im Hauptcontainer
         name_header = ctk.CTkLabel(
-            header_frame,
+            table_container,
             text="Name",
             font=ctk.CTkFont(size=12, weight="bold"),
-            width=120
+            anchor="w"
         )
         name_header.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         
         role_header = ctk.CTkLabel(
-            header_frame,
+            table_container,
             text="Rolle",
             font=ctk.CTkFont(size=12, weight="bold"),
-            width=80
+            anchor="w"
         )
         role_header.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         
         hours_header = ctk.CTkLabel(
-            header_frame,
+            table_container,
             text="Stunden",
             font=ctk.CTkFont(size=12, weight="bold"),
-            width=60
+            anchor="e"
         )
-        hours_header.grid(row=0, column=2, padx=5, pady=5, sticky="w")
+        hours_header.grid(row=0, column=2, padx=5, pady=5, sticky="e")
         
         capacity_header = ctk.CTkLabel(
-            header_frame,
+            table_container,
             text="Kapazität",
             font=ctk.CTkFont(size=12, weight="bold"),
-            width=60
+            anchor="e"
         )
-        capacity_header.grid(row=0, column=3, padx=5, pady=5, sticky="w")
+        capacity_header.grid(row=0, column=3, padx=5, pady=5, sticky="e")
+        
+        # Trennlinie unter den Überschriften
+        separator = ctk.CTkFrame(table_container, height=1, fg_color=("gray70", "gray30"))
+        separator.grid(row=1, column=0, columnspan=4, sticky="ew", padx=5, pady=2)
         
         # Team-Mitglieder anzeigen
         for i, member in enumerate(team_members):
+            row_idx = i + 2  # +2 wegen Header und Separator
             member_id = member.get("id", "")
             member_name = member.get("name", "Unbekannt")
             member_role = member.get("rolle", "")
-            member_fte = member.get("fte", 1.0)
             
             # Kapazität für diesen Mitarbeiter
             hours = capacity_data.get(member_id, 0)
             capacity = kapa_data.get(member_id, 0)
             
-            # Mitarbeiter-Frame
-            member_frame = ctk.CTkFrame(self.team_list_frame)
-            member_frame.pack(fill="x", padx=5, pady=2)
+            # Hintergrundfarbe für die Zeile
+            bg_color = ("gray90", "gray20") if i % 2 == 1 else None
             
-            # Hintergrundfarbe abwechseln
-            if i % 2 == 0:
-                member_frame.configure(fg_color=("gray90", "gray20"))
+            # Zeilencontainer
+            row_frame = ctk.CTkFrame(table_container, fg_color=bg_color, corner_radius=0)
+            row_frame.grid(row=row_idx, column=0, columnspan=4, sticky="ew", padx=0, pady=0)
             
-            # Name
+            # Die gleiche Grid-Konfiguration für die Zeile
+            for j, config in enumerate(col_configs):
+                row_frame.grid_columnconfigure(
+                    j, 
+                    minsize=config["minsize"], 
+                    weight=config["weight"]
+                )
+            
+            # Name (linksbündig)
             name_label = ctk.CTkLabel(
-                member_frame,
+                row_frame,
                 text=member_name,
-                anchor="w",
-                width=120
+                anchor="w"
             )
-            name_label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+            name_label.grid(row=0, column=0, padx=5, pady=3, sticky="ew")
             
-            # Rolle
+            # Rolle (linksbündig)
             role_label = ctk.CTkLabel(
-                member_frame,
+                row_frame,
                 text=member_role,
-                anchor="w",
-                width=80
+                anchor="w"
             )
-            role_label.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+            role_label.grid(row=0, column=1, padx=5, pady=3, sticky="ew")
             
-            # Stunden
+            # Stunden (rechtsbündig)
             hours_label = ctk.CTkLabel(
-                member_frame,
+                row_frame,
                 text=f"{hours:.1f}h",
-                anchor="w",
-                width=60
+                anchor="e"
             )
-            hours_label.grid(row=0, column=2, padx=5, pady=5, sticky="w")
+            hours_label.grid(row=0, column=2, padx=5, pady=3, sticky="e")
             
-            # Kapazität
+            # Kapazität (rechtsbündig)
             capacity_label = ctk.CTkLabel(
-                member_frame,
+                row_frame,
                 text=f"{capacity:.2f}",
-                anchor="w",
-                width=60
+                anchor="e"
             )
-            capacity_label.grid(row=0, column=3, padx=5, pady=5, sticky="w")
+            capacity_label.grid(row=0, column=3, padx=5, pady=3, sticky="e")
 
     def _update_calendar(self):
         """Aktualisiert den Tageskalender für den ausgewählten Sprint"""
@@ -723,10 +721,9 @@ class MainView(ctk.CTkFrame):
                 continue
         
         # Scrollbaren Container für den Kalender erstellen
+        # Nutzt die gesamte verfügbare Fläche
         calendar_scroll = ctk.CTkScrollableFrame(
-            self.calendar_frame,
-            width=980,  # Breiter machen
-            height=250
+            self.calendar_frame
         )
         calendar_scroll.pack(fill="both", expand=True)
         
@@ -734,8 +731,15 @@ class MainView(ctk.CTkFrame):
         calendar_table = ctk.CTkFrame(calendar_scroll)
         calendar_table.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Zellen-Breite und Höhe
-        cell_width = 50
+        # Konfiguriere die Spalten, damit sie sich der Fenstergröße anpassen
+        # Die erste Spalte (Mitarbeiternamen) sollte eine feste Breite haben
+        calendar_table.grid_columnconfigure(0, weight=0, minsize=150)
+        
+        # Die restlichen Spalten (Tage) sollen sich gleichmäßig den verbleibenden Platz teilen
+        for col in range(1, len(sprint_days) + 1):
+            calendar_table.grid_columnconfigure(col, weight=1)
+        
+        # Zellen-Höhe
         cell_height = 30
         
         # Spalten-Header (Tage)
@@ -743,7 +747,6 @@ class MainView(ctk.CTkFrame):
         empty_header = ctk.CTkLabel(
             calendar_table,
             text="",
-            width=150,
             height=cell_height
         )
         empty_header.grid(row=0, column=0, padx=1, pady=1, sticky="nsew")
@@ -763,7 +766,6 @@ class MainView(ctk.CTkFrame):
             day_header = ctk.CTkLabel(
                 calendar_table,
                 text=day_name,
-                width=cell_width,
                 height=cell_height,
                 fg_color=bg_color
             )
@@ -778,7 +780,6 @@ class MainView(ctk.CTkFrame):
             name_header = ctk.CTkLabel(
                 calendar_table,
                 text=member_name,
-                width=150,
                 height=cell_height,
                 anchor="w",
                 font=ctk.CTkFont(weight="bold")
@@ -795,7 +796,6 @@ class MainView(ctk.CTkFrame):
                     cell = ctk.CTkLabel(
                         calendar_table,
                         text="WE",
-                        width=cell_width,
                         height=cell_height,
                         fg_color=("gray80", "gray40")
                     )
@@ -824,7 +824,6 @@ class MainView(ctk.CTkFrame):
                 cell = ctk.CTkLabel(
                     calendar_table,
                     text=text,
-                    width=cell_width,
                     height=cell_height,
                     fg_color=bg_color
                 )
@@ -969,3 +968,35 @@ class MainView(ctk.CTkFrame):
             message: Die anzuzeigende Nachricht
         """
         self.status_label.configure(text=message)
+
+    def _create_card(self, parent, title, value, description=None):
+        """Erstellt eine Dashboard-Karte mit Titel, Wert und optionaler Beschreibung"""
+        card = ctk.CTkFrame(parent, corner_radius=10)
+        
+        # Titel
+        title_label = ctk.CTkLabel(
+            card,
+            text=title,
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        title_label.pack(anchor="n", pady=(15, 5))
+        
+        # Wert (groß)
+        value_label = ctk.CTkLabel(
+            card,
+            text=value,
+            font=ctk.CTkFont(size=24, weight="bold")
+        )
+        value_label.pack(pady=10)
+        
+        # Beschreibung (optional)
+        if description:
+            desc_label = ctk.CTkLabel(
+                card,
+                text=description,
+                font=ctk.CTkFont(size=10),
+                text_color=("gray60", "gray70")
+            )
+            desc_label.pack(pady=(0, 15))
+        
+        return card

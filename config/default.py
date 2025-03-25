@@ -4,7 +4,7 @@ Standardkonfiguration für CAMP
 
 # Anwendungseinstellungen
 APP_NAME = "CAMP - Capacity Analysis & Management Planner"
-DEFAULT_THEME = "Light"  # "System", "Dark" oder "Light"
+DEFAULT_THEME = "Dark"  # "System", "Dark" oder "Light"
 DEFAULT_COLOR_SCHEME = "blue"  # "blue", "dark-blue", "green"
 
 # Pfade
