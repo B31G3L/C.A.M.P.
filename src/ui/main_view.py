@@ -380,80 +380,155 @@ class MainView(ctk.CTkFrame):
         self.show_message(f"Sprint '{sprint.get('sprint_name', 'Unbenannt')}' ausgewählt")
     
     def _update_sprint_details(self):
-        """Aktualisiert die Anzeige der Sprint-Details"""
+        """Aktualisiert die Anzeige der Sprint-Details im Dashboard-Stil"""
+        # Bestehende Sprint-Details-Widgets entfernen
+        self.sprint_details.destroy()
+        
+        # Container für das Dashboard erstellen
+        self.sprint_details = ctk.CTkScrollableFrame(
+            self.details_frame,
+            width=380,
+            height=300
+        )
+        self.sprint_details.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Prüfen, ob ein Sprint ausgewählt ist
         if not self.selected_sprint:
-            self._clear_sprint_details()
+            no_sprint_label = ctk.CTkLabel(
+                self.sprint_details,
+                text="Kein Sprint ausgewählt",
+                font=ctk.CTkFont(size=16, slant="italic")
+            )
+            no_sprint_label.pack(pady=50)
             return
         
         # Sprint-Daten extrahieren
         sprint_name = self.selected_sprint.get("sprint_name", "Unbenannt")
         start_date = self.selected_sprint.get("start", "")
         end_date = self.selected_sprint.get("ende", "")
-        confirmed_sp = self.selected_sprint.get("confimed_story_points", 0)
-        delivered_sp = self.selected_sprint.get("delivered_story_points", 0)
-        
-        # Datumsberechnungen
-        now = datetime.now()
-        start = self._parse_date(start_date)
-        end = self._parse_date(end_date)
-        
-        # Sprint-Status
-        if start <= now <= end:
-            status = "Aktiv"
-            days_left = (end - now).days
-            status_info = f"Noch {days_left} Tage übrig"
-        elif now < start:
-            status = "Geplant"
-            days_to_start = (start - now).days
-            status_info = f"Beginnt in {days_to_start} Tagen"
-        else:
-            status = "Abgeschlossen"
-            days_since = (now - end).days
-            status_info = f"Vor {days_since} Tagen beendet"
-        
-        # Gesamtdauer (inklusive Wochenenden)
-        total_duration = (end - start).days + 1
-        
-        # Arbeitstage berechnen (ohne Wochenenden)
-        workdays = 0
-        current_date = start
-        while current_date <= end:
-            # Wenn kein Wochenende (0=Montag, 5=Samstag, 6=Sonntag)
-            if current_date.weekday() < 5:
-                workdays += 1
-            current_date += timedelta(days=1)
         
         # Kapazitäten berechnen - nur für Teammitglieder
         sprint_data = self._get_sprint_capacity_data()
-        total_hours = sum(hours for _, hours, _ in sprint_data)
         total_capacity = sum(capacity for _, _, capacity in sprint_data)
         
-        # Team-Größe
-        team_size = len(self.selected_project.get("teilnehmer", []))
+        # Fester Umrechnungsfaktor
+        umrechnungsfaktor = 1.4
         
-        # Text für Details zusammenstellen
-        details_text = f"Sprint: {sprint_name}\n\n"
-        details_text += f"Zeitraum: {start_date} bis {end_date}\n"
-        details_text += f"Gesamtdauer: {total_duration} Tage (mit Wochenenden)\n"
-        details_text += f"Arbeitstage: {workdays} Tage (ohne Wochenenden)\n\n"
-        details_text += f"Status: {status}\n"
-        details_text += f"{status_info}\n\n"
-        details_text += f"Geplante Story Points: {confirmed_sp}\n"
-        details_text += f"Gelieferte Story Points: {delivered_sp}\n\n"
+        # Berechnete Story Points
+        berechnete_sp = total_capacity / umrechnungsfaktor
         
-        if delivered_sp > 0 and confirmed_sp > 0:
-            performance = (delivered_sp / confirmed_sp) * 100
-            details_text += f"Leistung: {performance:.1f}%\n\n"
+        # Header mit Sprint-Namen
+        header_frame = ctk.CTkFrame(self.sprint_details, fg_color=("blue", "dark blue"), corner_radius=8)
+        header_frame.pack(fill="x", pady=(0, 15))
         
-        details_text += f"Team-Größe: {team_size} Mitarbeiter\n"
-        details_text += f"Gesamtstunden: {total_hours:.1f} Stunden (nur Teammitglieder)\n"
-        details_text += f"Gesamtkapazität: {total_capacity:.2f} (nur Teammitglieder)\n"
+        sprint_title = ctk.CTkLabel(
+            header_frame,
+            text=sprint_name,
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white"
+        )
+        sprint_title.pack(pady=15)
         
-        # Details anzeigen
-        self.sprint_details.configure(state="normal")
-        self.sprint_details.delete("1.0", "end")
-        self.sprint_details.insert("1.0", details_text)
-        self.sprint_details.configure(state="disabled")
+        # Zeitraum-Banner
+        timeline_frame = ctk.CTkFrame(self.sprint_details, corner_radius=8)
+        timeline_frame.pack(fill="x", pady=(0, 15))
+        
+        timeline_label = ctk.CTkLabel(
+            timeline_frame,
+            text=f"Zeitraum: {start_date} bis {end_date}",
+            font=ctk.CTkFont(size=14),
+            anchor="center"
+        )
+        timeline_label.pack(pady=10)
+        
+        # Container für drei Karten nebeneinander
+        cards_frame = ctk.CTkFrame(self.sprint_details)
+        cards_frame.pack(fill="x", pady=(0, 10))
+        
+        # Grid-Konfiguration für gleichmäßige Spaltenbreite
+        cards_frame.columnconfigure(0, weight=1)
+        cards_frame.columnconfigure(1, weight=1)
+        cards_frame.columnconfigure(2, weight=1)
+        
+        # 1. Karte: Kapazität
+        capacity_card = self._create_card(
+            cards_frame,
+            "Kapazität",
+            f"{total_capacity:.2f}",
+            "Teamkapazität für den Sprint"
+        )
+        capacity_card.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # 2. Karte: Umrechnungsfaktor
+        factor_card = self._create_card(
+            cards_frame,
+            "Faktor",
+            f"{umrechnungsfaktor}",
+            "Umrechnungsfaktor"
+        )
+        factor_card.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        
+        # 3. Karte: Story Points
+        sp_card = self._create_card(
+            cards_frame,
+            "Story Points",
+            f"{berechnete_sp:.1f}",
+            "Berechnete SP (Kapazität/Faktor)"
+        )
+        sp_card.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
+    def _create_card(self, parent, title, value, description=None):
+        """Erstellt eine Dashboard-Karte mit Titel, Wert und optionaler Beschreibung"""
+        card = ctk.CTkFrame(parent, corner_radius=10)
+        
+        # Titel
+        title_label = ctk.CTkLabel(
+            card,
+            text=title,
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        title_label.pack(anchor="n", pady=(15, 5))
+        
+        # Wert (groß)
+        value_label = ctk.CTkLabel(
+            card,
+            text=value,
+            font=ctk.CTkFont(size=24, weight="bold")
+        )
+        value_label.pack(pady=10)
+        
+        # Beschreibung (optional)
+        if description:
+            desc_label = ctk.CTkLabel(
+                card,
+                text=description,
+                font=ctk.CTkFont(size=10),
+                text_color=("gray60", "gray70")
+            )
+            desc_label.pack(pady=(0, 15))
+        
+        return card
+
+    def _clear_sprint_details(self):
+        """Leert die Sprint-Details"""
+        # Falls bereits ein Dashboard existiert, entferne es
+        if hasattr(self, 'sprint_details') and self.sprint_details:
+            self.sprint_details.destroy()
+        
+        # Container für das Dashboard erstellen
+        self.sprint_details = ctk.CTkScrollableFrame(
+            self.details_frame,
+            width=380,
+            height=300
+        )
+        self.sprint_details.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Hinweis anzeigen
+        no_sprint_label = ctk.CTkLabel(
+            self.sprint_details,
+            text="Kein Sprint ausgewählt",
+            font=ctk.CTkFont(size=16, slant="italic")
+        )
+        no_sprint_label.pack(pady=50)
     
     def _update_team_list(self):
         """Aktualisiert die Liste der Team-Mitglieder und deren Auslastung"""
@@ -579,6 +654,7 @@ class MainView(ctk.CTkFrame):
                 width=60
             )
             capacity_label.grid(row=0, column=3, padx=5, pady=5, sticky="w")
+
     def _update_calendar(self):
         """Aktualisiert den Tageskalender für den ausgewählten Sprint"""
         # Bestehenden Kalender leeren

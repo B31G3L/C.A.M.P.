@@ -56,36 +56,49 @@
                     "name": "Igor Perciuleac",
                     "rolle": "DEV",
                     "fte": 1.0
+                },
+                {
+                    "id": "Martina",
+                    "name": "Martina",
+                    "rolle": "DEV",
+                    "fte": 1.0
                 }
             ],
             "sprints": [
                 {
+                    "sprint_name": "EVE R25A - Sprint 6",
+                    "start": "05.02.2025",
+                    "ende": "25.02.2025",
+                    "confimed_story_points": 80,
+                    "delivered_story_points": 39
+                },
+                {
                     "sprint_name": "EVE R25B - Sprint 1",
                     "start": "26.02.2025",
                     "ende": "18.03.2025",
-                    "confimed_story_points": 50,
-                    "delivered_story_points": 60
+                    "confimed_story_points": 82,
+                    "delivered_story_points": 40
                 },
                 {
                     "sprint_name": "EVE R25B - Sprint 2",
                     "start": "19.03.2025",
                     "ende": "08.04.2025",
-                    "confimed_story_points": 50,
-                    "delivered_story_points": 60
+                    "confimed_story_points": 76,
+                    "delivered_story_points": 0
                 },
                 {
                     "sprint_name": "EVE R25B - Sprint 3",
                     "start": "09.04.2025",
                     "ende": "29.04.2025",
-                    "confimed_story_points": 50,
-                    "delivered_story_points": 60
+                    "confimed_story_points": 80,
+                    "delivered_story_points": 0
                 },
                 {
                     "sprint_name": "EVE R25B - Sprint 4",
                     "start": "30.04.2025",
                     "ende": "24.05.2025",
-                    "confimed_story_points": 50,
-                    "delivered_story_points": 60
+                    "confimed_story_points": 0,
+                    "delivered_story_points": 0
                 }
             ]
         },
