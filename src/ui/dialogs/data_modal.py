@@ -6,7 +6,8 @@ import csv
 import customtkinter as ctk
 from typing import List, Dict, Optional, Any
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
+import shutil
 
 class DataModal(ctk.CTkToplevel):
     """
@@ -145,6 +146,35 @@ class DataModal(ctk.CTkToplevel):
             state="disabled"  # Anfangs deaktiviert
         )
 
+        # Neuer Button: Alles löschen
+        self.delete_all_button = ctk.CTkButton(
+            self.button_frame,
+            text="Alles löschen",
+            command=self._delete_all_data,
+            fg_color=("red3", "red4"),
+            hover_color=("red4", "red3"),
+            width=120
+        )
+
+        # Import/Export Frame
+        self.io_frame = ctk.CTkFrame(self)
+
+        # Import-Button
+        self.import_button = ctk.CTkButton(
+            self.io_frame,
+            text="Import CSV",
+            command=self._import_data,
+            width=120
+        )
+
+        # Export-Button
+        self.export_button = ctk.CTkButton(
+            self.io_frame,
+            text="Export CSV",
+            command=self._export_data,
+            width=120
+        )
+
     # 2. Jetzt passen wir das Layout an, um das delete_info_frame unter der Tabelle zu platzieren
     # Ändere diese Methode:
 
@@ -161,6 +191,11 @@ class DataModal(ctk.CTkToplevel):
         self.search_column_dropdown.pack(side="left", padx=5, pady=5)
         self.search_button.pack(side="left", padx=5, pady=5)
         self.reset_button.pack(side="left", padx=5, pady=5)
+
+        # Import/Export-Frame
+        self.io_frame.pack(fill="x", padx=15, pady=5)
+        self.import_button.pack(side="left", padx=(10, 5), pady=5)
+        self.export_button.pack(side="left", padx=5, pady=5)
         
         # Tabellen-Frame (nimmt den meisten Platz ein)
         self.table_frame.pack(fill="both", expand=True, padx=15, pady=10)
@@ -175,6 +210,7 @@ class DataModal(ctk.CTkToplevel):
         self.close_button.pack(side="right", padx=10)
         self.refresh_button.pack(side="right", padx=10)
         self.delete_button.pack(side="left", padx=10)
+        self.delete_all_button.pack(side="left", padx=10)
     
     def _load_data(self):
         """Lädt die Daten aus der CSV-Datei"""
@@ -567,3 +603,213 @@ class DataModal(ctk.CTkToplevel):
         
         # Fenster positionieren
         self.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _delete_all_data(self):
+        """Löscht alle Daten aus der CSV-Datei mit Sicherheitsabfrage"""
+        # Prüfen, ob die Datei existiert
+        if not os.path.exists(self.csv_path):
+            messagebox.showerror(
+                "Datei nicht gefunden",
+                f"Die Datei {self.csv_path} existiert nicht.",
+                parent=self
+            )
+            return
+
+        # Bestätigungsdialog anzeigen
+        confirm = messagebox.askyesno(
+            "Alle Daten löschen",
+            "Möchten Sie wirklich ALLE Einträge aus der Datei löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!",
+            parent=self
+        )
+
+        if not confirm:
+            return
+
+        try:
+            # Datei sichern (Backup)
+            backup_path = self.csv_path + ".bak"
+            try:
+                shutil.copy2(self.csv_path, backup_path)
+            except Exception as e:
+                print(f"Warnung: Backup konnte nicht erstellt werden: {e}")
+
+            # Leere Datei erstellen
+            with open(self.csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+                # Datei wird geleert, keine Daten werden geschrieben
+                pass
+
+            # Erfolgsmeldung
+            messagebox.showinfo(
+                "Daten gelöscht",
+                "Alle Einträge wurden erfolgreich gelöscht.",
+                parent=self
+            )
+
+            # Daten neu laden
+            self._load_data()
+
+        except Exception as e:
+            messagebox.showerror(
+                "Fehler beim Löschen",
+                f"Fehler beim Löschen aller Einträge: {e}",
+                parent=self
+            )
+
+    def _export_data(self):
+        """Exportiert die CSV-Datei an einen vom Benutzer gewählten Ort"""
+        # Prüfen, ob die Datei existiert
+        if not os.path.exists(self.csv_path):
+            messagebox.showerror(
+                "Datei nicht gefunden",
+                f"Die Datei {self.csv_path} existiert nicht.",
+                parent=self
+            )
+            return
+
+        # Datei-Dialog öffnen
+        export_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV-Dateien", "*.csv"), ("Alle Dateien", "*.*")],
+            title="CSV-Datei exportieren",
+            initialfile=os.path.basename(self.csv_path)
+        )
+
+        if not export_path:
+            return  # Benutzer hat abgebrochen
+
+        try:
+            # Datei kopieren
+            shutil.copy2(self.csv_path, export_path)
+
+            # Erfolgsmeldung
+            messagebox.showinfo(
+                "Export erfolgreich",
+                f"Die Daten wurden erfolgreich nach {export_path} exportiert.",
+                parent=self
+            )
+
+        except Exception as e:
+            messagebox.showerror(
+                "Export fehlgeschlagen",
+                f"Fehler beim Exportieren der Datei: {e}",
+                parent=self
+            )
+
+    def _import_data(self):
+        """Importiert eine CSV-Datei und fragt, ob bestehende Daten überschrieben werden sollen"""
+        # Datei-Dialog öffnen
+        import_path = filedialog.askopenfilename(
+            filetypes=[("CSV-Dateien", "*.csv"), ("Alle Dateien", "*.*")],
+            title="CSV-Datei importieren"
+        )
+
+        if not import_path:
+            return  # Benutzer hat abgebrochen
+
+        # Prüfen, ob die Datei existiert
+        if not os.path.exists(import_path):
+            messagebox.showerror(
+                "Datei nicht gefunden",
+                f"Die Datei {import_path} existiert nicht.",
+                parent=self
+            )
+            return
+
+        # Frage, ob bestehende Daten überschrieben werden sollen
+        if os.path.exists(self.csv_path):
+            overwrite = messagebox.askyesno(
+                "Daten überschreiben",
+                "Sollen die bestehenden Daten überschrieben werden?\n\n" +
+                "Ja: Alle bestehenden Daten werden ersetzt.\n" +
+                "Nein: Die importierten Daten werden an die bestehenden angehängt.",
+                parent=self
+            )
+        else:
+            overwrite = True  # Wenn keine Datei existiert, immer überschreiben
+
+        try:
+            # Bestehende Datei sichern (Backup)
+            if os.path.exists(self.csv_path):
+                backup_path = self.csv_path + ".bak"
+                try:
+                    shutil.copy2(self.csv_path, backup_path)
+                except Exception as e:
+                    print(f"Warnung: Backup konnte nicht erstellt werden: {e}")
+
+            # Importierte Daten laden
+            with open(import_path, 'r', newline='', encoding='utf-8') as importfile:
+                try:
+                    dialect = csv.Sniffer().sniff(importfile.read(1024))
+                    importfile.seek(0)
+                    reader = csv.reader(importfile, dialect)
+                except:
+                    importfile.seek(0)
+                    reader = csv.reader(importfile, delimiter=';')
+                
+                imported_data = list(reader)
+
+            if overwrite:
+                # Bestehende Daten überschreiben
+                with open(self.csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile, delimiter=';')
+                    for row in imported_data:
+                        writer.writerow(row)
+                
+                message = f"{len(imported_data)} Einträge wurden importiert und bestehende Daten überschrieben."
+            else:
+                # Bestehende Daten laden
+                existing_data = []
+                if os.path.exists(self.csv_path):
+                    with open(self.csv_path, 'r', newline='', encoding='utf-8') as csvfile:
+                        try:
+                            dialect = csv.Sniffer().sniff(csvfile.read(1024))
+                            csvfile.seek(0)
+                            reader = csv.reader(csvfile, dialect)
+                        except:
+                            csvfile.seek(0)
+                            reader = csv.reader(csvfile, delimiter=';')
+                        
+                        existing_data = list(reader)
+
+                # Anhängen der neuen Daten
+                with open(self.csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile, delimiter=';')
+                    for row in existing_data:
+                        writer.writerow(row)
+                    for row in imported_data:
+                        writer.writerow(row)
+                
+                message = f"{len(imported_data)} Einträge wurden importiert und an bestehende Daten angehängt."
+
+            # Erfolgsmeldung
+            messagebox.showinfo(
+                "Import erfolgreich",
+                message,
+                parent=self
+            )
+
+            # Daten neu laden
+            self._load_data()
+
+        except Exception as e:
+            messagebox.showerror(
+                "Import fehlgeschlagen",
+                f"Fehler beim Importieren der Datei: {e}",
+                parent=self
+            )
+
+            # Versuche, das Backup wiederherzustellen
+            if os.path.exists(backup_path):
+                try:
+                    shutil.copy2(backup_path, self.csv_path)
+                    messagebox.showinfo(
+                        "Wiederherstellung",
+                        "Die Datei wurde aus dem Backup wiederhergestellt.",
+                        parent=self
+                    )
+                except Exception as restore_error:
+                    messagebox.showerror(
+                        "Fehler bei der Wiederherstellung",
+                        f"Fehler bei der Wiederherstellung aus dem Backup: {restore_error}",
+                        parent=self
+                    )
