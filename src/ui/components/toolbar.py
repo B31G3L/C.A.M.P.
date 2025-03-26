@@ -87,5 +87,6 @@ class Toolbar(ctk.CTkFrame):
     
     def _on_create_markup(self):
         """Wird aufgerufen, wenn der 'Create Markdown' Button geklickt wird"""
-        if "markdown_manager" in self.callbacks:
-            self.callbacks["markdown_manager"]()
+        if "create_markup" in self.callbacks:
+            print(self.callbacks)
+            self.callbacks["create_markup"]()
