@@ -1,22 +1,26 @@
 """
-Modal-Fenster zur Anzeige und zum Kopieren von Markdown-Inhalt
+Modal-Fenster zur Anzeige und zum Kopieren von Markdown-Inhalt mit Vorschau
 """
 import tkinter as tk
 import customtkinter as ctk
+import markdown  # Markdown-zu-HTML-Konverter
+import webbrowser
+import tempfile
+import os
 from typing import Optional
 
 class MarkdownModal(ctk.CTkToplevel):
     """
-    Modal-Fenster zur Anzeige von generiertem Markdown-Inhalt
+    Modal-Fenster zur Anzeige von generiertem Markdown- oder Confluence-Wiki-Inhalt
     mit Möglichkeit zum Kopieren in die Zwischenablage
     """
-    def __init__(self, master, markdown_content: str, title: str = "Markdown"):
+    def __init__(self, master, content: str, title: str = "Markdown"):
         """
         Initialisiert das Modal-Fenster
         
         Args:
             master: Das übergeordnete Widget
-            markdown_content: Der anzuzeigende Markdown-Inhalt
+            content: Der anzuzeigende Inhalt (Markdown oder Confluence Wiki)
             title: Der Titel des Fensters
         """
         super().__init__(master)
@@ -31,14 +35,15 @@ class MarkdownModal(ctk.CTkToplevel):
         self.grab_set()         # Blockiert Interaktion mit dem Hauptfenster
         
         # Attribute
-        self.markdown_content = markdown_content
+        self.content = content
+        self.is_confluence = "h1." in content[:10]  # Prüft, ob es Confluence-Inhalt ist
         
         # UI erstellen
         self._create_widgets()
         self._setup_layout()
         
         # Inhalt einfügen
-        self.markdown_textbox.insert("1.0", markdown_content)
+        self.content_textbox.insert("1.0", content)
         
         # Fenster zentrieren und dann anzeigen
         self.center_window()
@@ -50,22 +55,26 @@ class MarkdownModal(ctk.CTkToplevel):
         """Erstellt alle UI-Elemente für das Modal"""
         # Titel-Frame
         self.title_frame = ctk.CTkFrame(self)
+        
+        # Passenden Titel basierend auf Inhaltstyp wählen
+        title_text = "Confluence Wiki Preview" if self.is_confluence else "Markdown Preview"
         self.title_label = ctk.CTkLabel(
             self.title_frame, 
-            text="Markdown Preview",
+            text=title_text,
             font=ctk.CTkFont(size=16, weight="bold")
         )
         
         # Info-Label
+        info_text = "Dieser Confluence Wiki-Text kann in Confluence eingefügt werden" if self.is_confluence else "Dieser Markdown-Text kann in Confluence eingefügt werden"
         self.info_label = ctk.CTkLabel(
             self.title_frame,
-            text="Dieser Markdown-Text kann in Confluence eingefügt werden",
+            text=info_text,
             font=ctk.CTkFont(size=12),
             text_color=("gray60", "gray70")
         )
         
-        # Textbox für Markdown-Inhalt
-        self.markdown_textbox = ctk.CTkTextbox(
+        # Textbox für Inhalt
+        self.content_textbox = ctk.CTkTextbox(
             self,
             font=ctk.CTkFont(family="Courier", size=12),
             wrap="none"  # Keine Zeilenumbrüche für bessere Formatierung
@@ -97,8 +106,8 @@ class MarkdownModal(ctk.CTkToplevel):
         self.title_label.pack(side="left", pady=10)
         self.info_label.pack(side="right", padx=10, pady=10)
         
-        # Markdown-Textbox (nimmt den meisten Platz ein)
-        self.markdown_textbox.pack(fill="both", expand=True, padx=20, pady=10)
+        # Inhalt-Textbox (nimmt den meisten Platz ein)
+        self.content_textbox.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Button-Frame
         self.button_frame.pack(fill="x", padx=20, pady=(0, 20))
@@ -106,9 +115,9 @@ class MarkdownModal(ctk.CTkToplevel):
         self.close_button.pack(side="right", padx=10)
     
     def _copy_to_clipboard(self):
-        """Kopiert den Markdown-Inhalt in die Zwischenablage"""
+        """Kopiert den Inhalt in die Zwischenablage"""
         self.clipboard_clear()
-        self.clipboard_append(self.markdown_content)
+        self.clipboard_append(self.content)
         
         # Kurze Bestätigung anzeigen (temporär)
         original_text = self.copy_button.cget("text")

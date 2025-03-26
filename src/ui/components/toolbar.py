@@ -51,10 +51,10 @@ class Toolbar(ctk.CTkFrame):
             command=self._on_camp_manager
         )
         
-        # 4. Button: "Create Markdown" (umbenannt von "Create/Copy Markup")
+        # 4. Button: "Create Confluence" (umbenannt von "Create Markdown")
         self.markup_btn = ctk.CTkButton(
             self, 
-            text="Create Markdown",
+            text="Create Confluence",
             command=self._on_create_markup
         )
     
@@ -65,7 +65,7 @@ class Toolbar(ctk.CTkFrame):
         self.import_data_btn.pack(side="left", padx=5, pady=5)
         self.camp_manager_btn.pack(side="left", padx=5, pady=5)
         
-        # "Create Markdown" Button ganz nach rechts
+        # "Create Confluence" Button ganz nach rechts
         self.markup_btn.pack(side="right", padx=(5, 10), pady=5)
 
     # Event-Handler-Methoden
@@ -86,7 +86,7 @@ class Toolbar(ctk.CTkFrame):
             self.callbacks["camp_manager"]()
     
     def _on_create_markup(self):
-        """Wird aufgerufen, wenn der 'Create Markdown' Button geklickt wird"""
+        """Wird aufgerufen, wenn der 'Create Confluence' Button geklickt wird"""
         if "create_markup" in self.callbacks:
             print(self.callbacks)
             self.callbacks["create_markup"]()
