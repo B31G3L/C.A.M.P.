@@ -1178,14 +1178,16 @@ class ImportModal(ctk.CTkToplevel):
         Führt neue Daten mit vorhandenen Daten zusammen, wobei vorhandene Einträge überschrieben werden
         
         Args:
-            new_data: Neue Daten [[ID, DATUM, STUNDEN], ...]
+            new_data: Neue Daten [[ID, DATUM, STUNDEN, KAPAZITÄT], ...]
             existing_file_path: Pfad zur bestehenden CSV-Datei
                 
         Returns:
             List[List[str]]: Zusammengeführte Daten
         """
         if not os.path.exists(existing_file_path):
-            return new_data
+            # Wenn die Datei nicht existiert, fügen wir einen Header hinzu
+            header = ["ID", "DATUM", "STUNDEN", "KAPAZITÄT"]
+            return [header] + new_data
         
         try:
             # Vorhandene Daten einlesen
@@ -1193,20 +1195,41 @@ class ImportModal(ctk.CTkToplevel):
                 reader = csv.reader(file, delimiter=';')
                 existing_data = list(reader)
             
+            if not existing_data:
+                # Leere Datei, nur Header erstellen
+                header = ["ID", "DATUM", "STUNDEN", "KAPAZITÄT"]
+                return [header] + new_data
+            
+            # Prüfe ob erste Zeile ein Header ist
+            first_row = existing_data[0]
+            has_header = False
+            
+            if first_row and len(first_row) >= 3 and (first_row[0] == "ID" or first_row[0] == "id"):
+                has_header = True
+                header = first_row
+                data_rows = existing_data[1:]
+            else:
+                # Kein Header gefunden, Standard verwenden
+                header = ["ID", "DATUM", "STUNDEN", "KAPAZITÄT"]
+                data_rows = existing_data
+            
             # Dictionary für schnellere Suche erstellen (ID+DATUM -> Zeilenindex)
-            id_date_indices = {(row[0], row[1]): i for i, row in enumerate(existing_data)}
+            id_date_indices = {(row[0], row[1]): i for i, row in enumerate(data_rows)}
             
             # Neue Daten durchgehen
+            merged_data = data_rows.copy()
             for row in new_data:
-                key = (row[0], row[1])
-                if key in id_date_indices:
-                    # Vorhandenen Eintrag überschreiben
-                    existing_data[id_date_indices[key]] = row
-                else:
-                    # Neuen Eintrag hinzufügen
-                    existing_data.append(row)
+                if len(row) >= 2:
+                    key = (row[0], row[1])
+                    if key in id_date_indices:
+                        # Vorhandenen Eintrag überschreiben
+                        merged_data[id_date_indices[key]] = row
+                    else:
+                        # Neuen Eintrag hinzufügen
+                        merged_data.append(row)
             
-            return existing_data
+            # Header wieder hinzufügen
+            return [header] + merged_data
         
         except Exception as e:
             raise Exception(f"Fehler beim Zusammenführen der Daten: {str(e)}")
@@ -1475,43 +1498,7 @@ class ImportModal(ctk.CTkToplevel):
                     except:
                         pass
 
-    def _merge_with_existing_data(self, new_data, existing_file_path):
-        """
-        Führt neue Daten mit vorhandenen Daten zusammen, wobei vorhandene Einträge überschrieben werden
-        
-        Args:
-            new_data: Neue Daten [[ID, DATUM, STUNDEN, KAPAZITÄT], ...]
-            existing_file_path: Pfad zur bestehenden CSV-Datei
-                
-        Returns:
-            List[List[str]]: Zusammengeführte Daten
-        """
-        if not os.path.exists(existing_file_path):
-            return new_data
-        
-        try:
-            # Vorhandene Daten einlesen
-            with open(existing_file_path, 'r', newline='', encoding='utf-8') as file:
-                reader = csv.reader(file, delimiter=';')
-                existing_data = list(reader)
-            
-            # Dictionary für schnellere Suche erstellen (ID+DATUM -> Zeilenindex)
-            id_date_indices = {(row[0], row[1]): i for i, row in enumerate(existing_data)}
-            
-            # Neue Daten durchgehen
-            for row in new_data:
-                key = (row[0], row[1])
-                if key in id_date_indices:
-                    # Vorhandenen Eintrag überschreiben
-                    existing_data[id_date_indices[key]] = row
-                else:
-                    # Neuen Eintrag hinzufügen
-                    existing_data.append(row)
-            
-            return existing_data
-        
-        except Exception as e:
-            raise Exception(f"Fehler beim Zusammenführen der Daten: {str(e)}")
+   
     
     
     def _load_project_data(self):

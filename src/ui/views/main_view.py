@@ -204,7 +204,16 @@ class MainView(ctk.CTkFrame):
             if os.path.exists(csv_path):
                 with open(csv_path, 'r', newline='', encoding='utf-8') as f:
                     reader = csv.reader(f, delimiter=';')
-                    for row in reader:
+                    rows = list(reader)
+
+                      # Prüfen, ob die erste Zeile ein Header ist
+                    if rows[0] and len(rows[0]) >= 3:
+                        first_row = rows[0]
+                        if first_row[0] == "ID" or first_row[0] == "id":
+                            # Header gefunden, überspringe die erste Zeile
+                            rows = rows[1:]
+
+                    for row in rows:
                         if len(row) >= 3:
                             # Stunden als Float
                             stunden = float(row[2].replace(',', '.'))

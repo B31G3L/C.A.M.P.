@@ -86,24 +86,57 @@ class DataService:
             if os.path.exists(self.kapa_path):
                 with open(self.kapa_path, 'r', newline='', encoding='utf-8') as f:
                     reader = csv.reader(f, delimiter=';')
-                    for row in reader:
-                        if len(row) >= 3:
-                            # Stunden als Float
-                            stunden = float(row[2].replace(',', '.'))
-                            
-                            # Kapazität aus der Datei lesen oder berechnen
-                            if len(row) >= 4:
-                                kapazitaet = float(row[3].replace(',', '.'))
-                            else:
-                                # Kapazität berechnen: Stunden >= 8 entsprechen Kapazität 1
-                                kapazitaet = 1.0 if stunden >= 8 else round(stunden / 8, 2)
-                            
-                            data.append((row[0], row[1], stunden, kapazitaet))
+                    rows = list(reader)
+                    
+                    # Wenn keine Daten vorhanden sind
+                    if not rows:
+                        return []
+                    
+                    # Prüfen, ob die erste Zeile ein Header ist
+                    if rows[0] and len(rows[0]) >= 3:
+                        first_row = rows[0]
+                        if first_row[0] == "ID" or first_row[0] == "id":
+                            # Header gefunden, überspringe die erste Zeile
+                            rows = rows[1:]
+                    
+                    # Verarbeite die Datenzeilen
+                    for row in rows:
+                        if row and len(row) >= 3:
+                            try:
+                                # Stunden als Float
+                                stunden = float(row[2].replace(',', '.'))
+                                
+                                # Kapazität aus der Datei lesen oder berechnen
+                                if len(row) >= 4 and row[3]:
+                                    kapazitaet = float(row[3].replace(',', '.'))
+                                else:
+                                    # Kapazität berechnen: Stunden >= 8 entsprechen Kapazität 1
+                                    kapazitaet = 1.0 if stunden >= 8 else round(stunden / 8, 2)
+                                
+                                data.append((row[0], row[1], stunden, kapazitaet))
+                            except ValueError:
+                                # Überspringe Zeilen, die nicht konvertiert werden können
+                                print(f"Warnung: Ungültige Datenzeile übersprungen: {row}")
         except Exception as e:
             print(f"Fehler beim Laden der Kapazitätsdaten: {e}")
         
         return data
-    
+
+    def _process_data_row(self, row, data):
+        """Hilfsmethode zum Verarbeiten einer Datenzeile"""
+        if row and len(row) >= 3:
+            # Stunden als Float
+            stunden = float(row[2].replace(',', '.'))
+            
+            # Kapazität aus der Datei lesen oder berechnen
+            if len(row) >= 4:
+                kapazitaet = float(row[3].replace(',', '.'))
+            else:
+                # Kapazität berechnen: Stunden >= 8 entsprechen Kapazität 1
+                kapazitaet = 1.0 if stunden >= 8 else round(stunden / 8, 2)
+            
+            data.append((row[0], row[1], stunden, kapazitaet))
+
     def save_kapa_data(self, kapa_data, create_backup=True):
         """
         Speichert die Kapazitätsdaten in die kapa_data.csv-Datei
@@ -125,9 +158,27 @@ class DataService:
                 backup_path = f"{self.kapa_path}.bak"
                 shutil.copy2(self.kapa_path, backup_path)
             
+            # Prüfen, ob die Datei bereits existiert und einen Header hat
+            header_exists = False
+            if os.path.exists(self.kapa_path):
+                try:
+                    with open(self.kapa_path, 'r', newline='', encoding='utf-8') as f:
+                        reader = csv.reader(f, delimiter=';')
+                        first_row = next(reader, None)
+                        if first_row and first_row[0] == "ID" and first_row[1] == "DATUM":
+                            header_exists = True
+                except:
+                    pass
+            
             # Speichere die Daten
             with open(self.kapa_path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f, delimiter=';')
+                
+                # Schreibe den Header, falls noch nicht vorhanden
+                if not header_exists:
+                    writer.writerow(["ID", "DATUM", "STUNDEN", "KAPAZITÄT"])
+                
+                # Schreibe die Daten
                 for row in kapa_data:
                     writer.writerow(row)
             

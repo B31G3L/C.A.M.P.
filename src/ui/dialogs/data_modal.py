@@ -224,8 +224,6 @@ class DataModal(ctk.CTkToplevel):
         self.delete_button.configure(state="disabled")
         self.delete_info_label.configure(text="Keine Einträge ausgewählt")
         
-        # Wir behalten den Reset-Button jetzt immer sichtbar
-        
         # Prüfe, ob die Datei existiert
         if not os.path.exists(self.csv_path):
             self._show_error(f"Die Datei {self.csv_path} existiert nicht.")
@@ -244,20 +242,22 @@ class DataModal(ctk.CTkToplevel):
                     csvfile.seek(0)
                     reader = csv.reader(csvfile, delimiter=';')
                 
-                # Erste Zeile könnte Header sein, wir prüfen das später
-                first_row = next(reader, None)
-                if not first_row:
+                # Alle Zeilen lesen
+                all_rows = list(reader)
+                if not all_rows:
                     self._show_error("Die CSV-Datei ist leer.")
                     return
                 
-                # Restliche Zeilen lesen
-                remaining_rows = list(reader)
-                
-                # Entscheide, ob die erste Zeile Header oder Daten sind
-                # Für diesen einfachen Fall nehmen wir an, dass keine Header existieren
-                # In einer realen Anwendung könnte man das intelligenter machen
-                self.headers = ["Name", "Datum", "Stunden"]  # Annahme für kapa_data.csv
-                self.data = [first_row] + remaining_rows
+                # Prüfe, ob die erste Zeile ein Header ist
+                first_row = all_rows[0]
+                if first_row and len(first_row) >= 3 and first_row[0] == "ID" and first_row[1] == "DATUM":
+                    # Es ist ein Header
+                    self.headers = first_row
+                    self.data = all_rows[1:]  # Alle Zeilen außer dem Header
+                else:
+                    # Keine Header, verwende Standardnamen
+                    self.headers = ["ID", "DATUM", "STUNDEN", "KAPAZITÄT"]
+                    self.data = all_rows
                 
                 # Aktualisiere die Suchspalten-Dropdown mit den Header-Namen
                 self.search_column_dropdown.configure(
@@ -605,7 +605,7 @@ class DataModal(ctk.CTkToplevel):
         self.geometry(f"{width}x{height}+{x}+{y}")
 
     def _delete_all_data(self):
-        """Löscht alle Daten aus der CSV-Datei mit Sicherheitsabfrage"""
+        """Löscht alle Daten aus der CSV-Datei mit Sicherheitsabfrage, behält aber den Header"""
         # Prüfen, ob die Datei existiert
         if not os.path.exists(self.csv_path):
             messagebox.showerror(
@@ -633,10 +633,13 @@ class DataModal(ctk.CTkToplevel):
             except Exception as e:
                 print(f"Warnung: Backup konnte nicht erstellt werden: {e}")
 
-            # Leere Datei erstellen
+            # Header definieren
+            header = ["ID", "DATUM", "STUNDEN", "KAPAZITÄT"]
+
+            # Datei mit nur dem Header erstellen
             with open(self.csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-                # Datei wird geleert, keine Daten werden geschrieben
-                pass
+                writer = csv.writer(csvfile, delimiter=';')
+                writer.writerow(header)
 
             # Erfolgsmeldung
             messagebox.showinfo(
