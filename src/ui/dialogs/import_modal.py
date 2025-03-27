@@ -1,5 +1,5 @@
 """
-Modal-Fenster zum Importieren von Daten mit Tabs für BW Tool Daten und Projektdaten
+Modal-Fenster zum Importieren von Daten mit Tabs für BW Tool Daten und Arbeitszeiterfassung
 """
 import os
 import customtkinter as ctk
@@ -435,7 +435,7 @@ class ProjectMemberSelectionDialog(ctk.CTkToplevel):
 
 class ImportModal(ctk.CTkToplevel):
     """
-    Modal-Fenster zum Importieren von Daten mit Tabs für BW Tool Daten und Projektdaten
+    Modal-Fenster zum Importieren von Daten mit Tabs für BW Tool Daten und Arbeitszeiterfassung
     """
     def __init__(self, master, callbacks: Optional[Dict[str, Callable]] = None):
         """
@@ -505,16 +505,12 @@ class ImportModal(ctk.CTkToplevel):
         # Tabs erstellen
         self.bw_tool_tab = self.tab_view.add("BW Tool Daten")
         self.ar_calendar_tab = self.tab_view.add("Arbeitszeiterfassung")
-        self.projekt_tab = self.tab_view.add("Projektdaten")
         
         # Inhalte für BW Tool Daten-Tab
         self._create_bw_tool_tab()
         
         # Inhalte für Arbeitszeiterfassung-Tab
         self._create_timesheet_tab()
-        
-        # Inhalte für Projektdaten-Tab
-        self._create_projekt_tab()
         
         # Button-Frame (unten)
         self.button_frame = ctk.CTkFrame(self)
@@ -749,96 +745,6 @@ class ImportModal(ctk.CTkToplevel):
         # Import-Button
         self.ar_import_button.pack(fill="x", pady=(10, 0))
     
-    def _create_projekt_tab(self):
-        """Erstellt die Inhalte für den Projektdaten-Tab"""
-        # Container-Frame für den Tab
-        container = ctk.CTkFrame(self.projekt_tab)
-        
-        # Info-Text
-        info_text = (
-            "Importieren Sie Projektdaten aus einer JSON-Datei.\n\n"
-            "Die JSON-Datei sollte eine Struktur mit Projekten, Teilnehmern und Sprints enthalten.\n\n"
-            "Beispiel:\n"
-            '{\n  "projekte": [\n    {\n      "name": "Projektname",\n      "teilnehmer": [...],\n      "sprints": [...]\n    }\n  ]\n}'
-        )
-        
-        info_label = ctk.CTkLabel(
-            container,
-            text=info_text,
-            justify="left",
-            anchor="w",
-            wraplength=600
-        )
-        
-        # Dateiauswahl-Frame
-        file_frame = ctk.CTkFrame(container)
-        
-        # Label für Dateiauswahl
-        file_label = ctk.CTkLabel(
-            file_frame,
-            text="JSON-Datei:",
-            font=ctk.CTkFont(weight="bold"),
-            width=80
-        )
-        
-        # Eingabefeld für Dateipfad
-        self.projekt_file_entry = ctk.CTkEntry(file_frame, width=400)
-        
-        # Button für Datei-Browser
-        self.projekt_browse_button = ctk.CTkButton(
-            file_frame,
-            text="Durchsuchen",
-            command=lambda: self._browse_file("json", self.projekt_file_entry),
-            width=100
-        )
-        
-        # Optionen-Frame
-        options_frame = ctk.CTkFrame(container)
-        
-        # Optionen für den Import
-        self.projekt_merge_var = ctk.BooleanVar(value=False)
-        self.projekt_merge_checkbox = ctk.CTkCheckBox(
-            options_frame,
-            text="Zusammenführen (bestehende Projekte beibehalten)",
-            variable=self.projekt_merge_var
-        )
-        
-        self.projekt_backup_var = ctk.BooleanVar(value=True)
-        self.projekt_backup_checkbox = ctk.CTkCheckBox(
-            options_frame,
-            text="Backup erstellen",
-            variable=self.projekt_backup_var
-        )
-        
-        # Import-Button
-        self.projekt_import_button = ctk.CTkButton(
-            container,
-            text="Projektdaten importieren",
-            command=self._import_projekt_data,
-            font=ctk.CTkFont(weight="bold"),
-            height=40,
-            fg_color=("green3", "green4"),
-            hover_color=("green4", "green3")
-        )
-        
-        # Layout für den Projektdaten-Tab
-        container.pack(fill="both", expand=True, padx=20, pady=20)
-        info_label.pack(anchor="w", pady=(0, 15))
-        
-        # Dateiauswahl-Frame
-        file_frame.pack(fill="x", pady=(0, 15))
-        file_label.pack(side="left")
-        self.projekt_file_entry.pack(side="left", padx=10)
-        self.projekt_browse_button.pack(side="left")
-        
-        # Optionen-Frame
-        options_frame.pack(fill="x", pady=(0, 20))
-        self.projekt_merge_checkbox.pack(anchor="w", pady=5)
-        self.projekt_backup_checkbox.pack(anchor="w", pady=5)
-        
-        # Import-Button
-        self.projekt_import_button.pack(fill="x", pady=(10, 0))
-    
     def _setup_layout(self):
         """Richtet das Layout der UI-Elemente ein"""
         # Titel-Frame
@@ -1046,7 +952,6 @@ class ImportModal(ctk.CTkToplevel):
         try:
             # Mitarbeiter-ID extrahieren
             member_id = self.selected_member.get("id", "")
-            
             # Excel-Datei verarbeiten
             self._show_status("Arbeitszeitdaten werden verarbeitet...", error=False)
             
@@ -1060,7 +965,7 @@ class ImportModal(ctk.CTkToplevel):
             
             # Verarbeite die Excel-Datei
             processed_data = self._process_ar_calendar_file(self.ar_selected_file, member_id)
-            
+            print(processed_data)
             # Wenn keine Daten verarbeitet wurden
             if not processed_data:
                 self._show_status("Keine gültigen Daten in der Datei gefunden.", error=True)
@@ -1095,65 +1000,6 @@ class ImportModal(ctk.CTkToplevel):
             self._show_status(f"Fehler beim Import: {str(e)}", error=True)
             import traceback
             traceback.print_exc()
-    
-    def _import_projekt_data(self):
-        """Importiert Projektdaten aus einer JSON-Datei"""
-        # Dateipfad auslesen
-        file_path = self.projekt_file_entry.get().strip()
-        
-        # Prüfen, ob eine Datei ausgewählt wurde
-        if not file_path:
-            self._show_status("Bitte wählen Sie eine JSON-Datei aus.", error=True)
-            return
-        
-        # Prüfen, ob die Datei existiert
-        if not os.path.exists(file_path):
-            self._show_status(f"Die Datei '{file_path}' existiert nicht.", error=True)
-            return
-        
-        try:
-            # Ziel-Dateipfad
-            target_path = os.path.join("data", "project.json")
-            
-            # Backup erstellen, falls gewünscht
-            if self.projekt_backup_var.get() and os.path.exists(target_path):
-                backup_path = f"{target_path}.bak"
-                shutil.copy2(target_path, backup_path)
-            
-            # JSON-Datei einlesen
-            with open(file_path, 'r', encoding='utf-8') as json_file:
-                data = json.load(json_file)
-            
-            # Wenn Zusammenführen gewählt wurde, bestehende Daten laden
-            if self.projekt_merge_var.get() and os.path.exists(target_path):
-                with open(target_path, 'r', encoding='utf-8') as existing_file:
-                    existing_data = json.load(existing_file)
-                
-                # Daten zusammenführen
-                if "projekte" in data and "projekte" in existing_data:
-                    # Erstelle ein Set mit den Namen der bestehenden Projekte
-                    existing_project_names = {p["name"] for p in existing_data["projekte"]}
-                    
-                    # Füge nur neue Projekte hinzu
-                    for project in data["projekte"]:
-                        if project["name"] not in existing_project_names:
-                            existing_data["projekte"].append(project)
-                    
-                    # Aktualisierte Daten verwenden
-                    data = existing_data
-            
-            # Daten in die Zieldatei schreiben
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            with open(target_path, 'w', encoding='utf-8') as output_file:
-                json.dump(data, output_file, indent=4, ensure_ascii=False)
-            
-            # Erfolgsmeldung anzeigen
-            projekt_count = len(data.get("projekte", []))
-            self._show_status(f"Import erfolgreich: {projekt_count} Projekte in '{target_path}'", error=False)
-        
-        except Exception as e:
-            # Fehlermeldung anzeigen
-            self._show_status(f"Fehler beim Import: {e}", error=True)
     
     def _show_status(self, message, error=False):
         """
@@ -1334,7 +1180,7 @@ class ImportModal(ctk.CTkToplevel):
 
     def _process_ar_calendar_file(self, file_path, selected_member_id):
         """
-        Verarbeitet eine Excel-Datei im ARCalendarList-Format
+        Robuste Excel-Import-Methode für problematische Dateien mit Formatierungsfehlern
         
         Args:
             file_path: Pfad zur Excel-Datei
@@ -1344,149 +1190,325 @@ class ImportModal(ctk.CTkToplevel):
             List[List[str]]: Verarbeitete Daten im Format [[ID, DATUM, STUNDEN, KAPAZITÄT], ...]
         """
         import pandas as pd
-        import re
+        import os
         import datetime
         import tempfile
-        import os
         import csv
         
         # Liste für verarbeitete Daten
         processed_data = []
         temp_files = []
         
+        # Debug-Funktion, die sowohl Konsolenausgabe als auch UI-Status aktualisiert
+        def log_info(message, is_error=False):
+            print(f"LOG: {message}")
+            self._show_status(message, error=is_error)
+        
         try:
-            # Verschiedene Methoden zum Lesen der Excel-Datei ausprobieren
+            log_info(f"Verarbeite Datei: {os.path.basename(file_path)}")
+            
+            # ROBUSTES EXCEL-LESEN MIT MEHREREN FALLBACK-METHODEN
             df = None
             success = False
             
-            # Methode 1: Pandas direkt verwenden
+            # Versuch 1: Mit expliziter Engine-Angabe und ohne Formatierungen
             try:
-                df = pd.read_excel(file_path)
+                log_info("Methode 1: Lese Excel ohne Formatierungen...")
+                df = pd.read_excel(file_path, engine='openpyxl', style_compression=True)
                 success = True
-            except Exception:
-                pass
+                log_info("Methode 1 erfolgreich!")
+            except Exception as e1:
+                log_info(f"Methode 1 fehlgeschlagen: {str(e1)}")
             
-            # Methode 2: Zuerst in CSV konvertieren mit openpyxl
+            # Versuch 2: Mit alternativer Engine
             if not success:
                 try:
+                    log_info("Methode 2: Versuche alternative Engine...")
+                    # Probiere xlrd für ältere Excel-Formate
+                    df = pd.read_excel(file_path, engine='xlrd')
+                    success = True
+                    log_info("Methode 2 erfolgreich!")
+                except Exception as e2:
+                    log_info(f"Methode 2 fehlgeschlagen: {str(e2)}")
+            
+            # Versuch 3: Mit openpyxl und data_only
+            if not success:
+                try:
+                    log_info("Methode 3: Verwende openpyxl mit data_only=True...")
                     from openpyxl import load_workbook
                     
+                    # Excel zu temporärer CSV konvertieren
                     temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
                     temp_csv.close()
                     temp_files.append(temp_csv.name)
                     
-                    # Versuche zu laden, ignoriere Stile
+                    # Lade Workbook und ignoriere Formatierungen
                     wb = load_workbook(filename=file_path, read_only=True, data_only=True)
                     ws = wb.active
                     
                     # In CSV schreiben
                     with open(temp_csv.name, 'w', newline='', encoding='utf-8') as f:
                         writer = csv.writer(f)
-                        for row in ws.iter_rows(values_only=True):
-                            writer.writerow(row)
+                        for row in ws.rows:
+                            writer.writerow([cell.value for cell in row])
                     
                     # DataFrame aus CSV erstellen
                     df = pd.read_csv(temp_csv.name)
                     success = True
-                
-                except Exception:
-                    pass
+                    log_info("Methode 3 erfolgreich!")
+                except Exception as e3:
+                    log_info(f"Methode 3 fehlgeschlagen: {str(e3)}")
             
-            # Wenn wir immer noch keine Daten haben, Fehler anzeigen
+            # Versuch 4: Fallback auf csv-Leser für Excel-Dateien
+            if not success:
+                try:
+                    log_info("Methode 4: Verwende PyExcelerate fallback...")
+                    # Dieser Code könnte helfen, aber erfordert die Installation von pyexcelerate
+                    # Für einfacheren Fallback verwenden wir eine direkte CSV-Konvertierung
+                    
+                    # Dateierweiterung prüfen
+                    import subprocess
+                    
+                    # Temporäres CSV erstellen
+                    temp_csv = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
+                    temp_csv.close()
+                    temp_files.append(temp_csv.name)
+                    
+                    # Hier würde man normalerweise externes Konvertierungstool aufrufen
+                    # Da wir das nicht haben, zeigen wir eine Anleitung
+                    log_info("Excel-Datei kann nicht automatisch verarbeitet werden.")
+                    log_info("Bitte speichern Sie die Datei manuell als CSV und versuchen Sie es erneut.")
+                    
+                    # Versuche trotzdem zu lesen, vielleicht klappt's
+                    try:
+                        df = pd.read_csv(file_path, sep=None, engine='python')
+                        success = True
+                        log_info("Notfall-CSV-Lesung erfolgreich!")
+                    except:
+                        pass
+                except Exception as e4:
+                    log_info(f"Methode 4 fehlgeschlagen: {str(e4)}")
+            
+            # Wenn alle Methoden fehlgeschlagen sind
             if not success or df is None:
-                self._show_status("Excel-Datei konnte nicht gelesen werden.", error=True)
+                log_info("Alle Lesemethoden fehlgeschlagen! Die Excel-Datei scheint beschädigt zu sein.", is_error=True)
+                log_info("EMPFEHLUNG: Öffnen Sie die Datei in Excel und speichern Sie als CSV.", is_error=True)
                 return []
             
-            # Suche nach Datums- und Stundenspalten
+            # Ab hier ist df verfügbar
+            log_info(f"Excel erfolgreich geladen: {len(df.columns)} Spalten, {len(df)} Zeilen")
+            
+            # Zeige Spalten an
+            log_info(f"Gefundene Spalten: {', '.join(str(col) for col in df.columns)}")
+            
+            # SCHRITT 2: Spalten identifizieren
             date_column = None
             hours_column = None
+            desc_column = None
             
-            # Suche nach Spalten mit üblichen Namen
-            date_keywords = ["date", "datum", "tag", "day", "date1"]
-            hours_keywords = ["total", "hours", "stunden", "zeit", "summe", "totalhours"]
+            # Listen mit möglichen Spaltennamen
+            date_keywords = ["date", "datum", "tag", "day", "dates", "calendar", "termin", "zeit"]
+            hours_keywords = ["total", "hours", "stunden", "zeit", "summe", "totalhours", "hour", "working", "hours_sum", "time"]
+            desc_keywords = ["desc", "description", "beschreibung", "comment", "kommentar", "remarks", "note", "notes", "text"]
             
+            # Suche nach Spalten (case-insensitive)
             for col in df.columns:
-                col_lower = str(col).lower()
+                col_str = str(col).lower().strip()
                 
-                # Nach Datumsspalte suchen
+                # Für Datumspalte
                 if not date_column:
-                    for kw in date_keywords:
-                        if kw in col_lower:
-                            date_column = col
-                            break
+                    if any(kw == col_str for kw in date_keywords) or any(kw in col_str for kw in date_keywords):
+                        date_column = col
+                        log_info(f"Datumsspalte gefunden: '{col}'")
                 
-                # Nach Stundenspalte suchen
+                # Für Stundenspalte
                 if not hours_column:
-                    for kw in hours_keywords:
-                        if kw in col_lower:
-                            hours_column = col
-                            break
+                    if any(kw == col_str for kw in hours_keywords) or any(kw in col_str for kw in hours_keywords):
+                        hours_column = col
+                        log_info(f"Stundenspalte gefunden: '{col}'")
+                
+                # Für Beschreibungsspalte
+                if not desc_column:
+                    if any(kw == col_str for kw in desc_keywords) or any(kw in col_str for kw in desc_keywords):
+                        desc_column = col
+                        log_info(f"Beschreibungsspalte gefunden: '{col}'")
             
-            # Wenn nicht gefunden, die ersten beiden Spalten verwenden
-            if date_column is None and len(df.columns) > 0:
+            # Typ-basierte Erkennung als Fallback
+            # Wenn keine Datumsspalte gefunden wurde
+            if not date_column:
+                for col in df.columns:
+                    # Prüfe auf Datums-Datentyp
+                    if pd.api.types.is_datetime64_any_dtype(df[col]):
+                        date_column = col
+                        log_info(f"Datumsspalte durch Datentyp gefunden: '{col}'")
+                        break
+            
+            # Wenn keine Stundenspalte gefunden wurde
+            if not hours_column:
+                for col in df.columns:
+                    if col != date_column and pd.api.types.is_numeric_dtype(df[col]):
+                        # Nehme die erste numerische Spalte, die keine Datumsspalte ist
+                        hours_column = col
+                        log_info(f"Stundenspalte durch Datentyp gefunden: '{col}'")
+                        break
+            
+            # Durchsuche alle Spalten nach FCAST/Forecast
+            if not desc_column:
+                for col in df.columns:
+                    if col != date_column and col != hours_column:
+                        try:
+                            # Konvertiere zu String und suche nach FCAST/Forecast
+                            col_data = df[col].astype(str).str.upper()
+                            if any(term in val for val in col_data for term in ["FCAST", "FORECAST"]):
+                                desc_column = col
+                                log_info(f"Beschreibungsspalte durch FCAST/Forecast gefunden: '{col}'")
+                                break
+                        except:
+                            continue
+            
+            # Wenn keine Spalten identifiziert wurden, nehmen wir die ersten verfügbaren
+            if not date_column and len(df.columns) > 0:
                 date_column = df.columns[0]
+                log_info(f"Keine Datumsspalte erkannt! Verwende erste Spalte: '{date_column}'", is_error=True)
             
-            if hours_column is None and len(df.columns) > 1:
-                hours_column = df.columns[1]
+            if not hours_column and len(df.columns) > 1:
+                for col in df.columns:
+                    if col != date_column:
+                        hours_column = col
+                        log_info(f"Keine Stundenspalte erkannt! Verwende Spalte: '{hours_column}'", is_error=True)
+                        break
             
-            # Prüfen, ob Spalten jetzt verfügbar sind
-            if date_column not in df.columns or hours_column not in df.columns:
-                self._show_status("Datums- oder Stundenspalten konnten nicht identifiziert werden.", error=True)
+            # Prüfen, ob wir weitermachen können
+            if not date_column or not hours_column:
+                log_info("Erforderliche Spalten nicht gefunden!", is_error=True)
                 return []
             
-            # Daten verarbeiten
-            for index, row in df.iterrows():
+            # SCHRITT 3: Daten filtern (wenn möglich)
+            filtered_df = df
+            if desc_column:
                 try:
-                    # Datum extrahieren
+                    log_info(f"Filtere nach FCAST/Forecast in '{desc_column}'...")
+                    
+                    # Konvertiere zu String (falls nötig) und suche nach FCAST/Forecast
+                    if not pd.api.types.is_string_dtype(df[desc_column]):
+                        desc_data = df[desc_column].astype(str)
+                    else:
+                        desc_data = df[desc_column]
+                    
+                    # Case-insensitive Suche
+                    mask = desc_data.str.upper().str.contains('FCAST|FORECAST', na=False)
+                    filtered_df = df[mask]
+                    
+                    log_info(f"Nach Filterung verbleiben {len(filtered_df)} von {len(df)} Zeilen")
+                    
+                    if filtered_df.empty:
+                        log_info("Keine Einträge mit FCAST/Forecast gefunden. Verwende alle Zeilen.", is_error=True)
+                        filtered_df = df
+                except Exception as filter_error:
+                    log_info(f"Fehler bei Filterung: {str(filter_error)}", is_error=True)
+                    filtered_df = df
+            else:
+                log_info("Keine Beschreibungsspalte für FCAST/Forecast-Filter gefunden.")
+            
+            # SCHRITT 4: Daten verarbeiten
+            log_info("Verarbeite gefilterte Daten...")
+            successful_rows = 0
+            error_rows = 0
+            
+            for index, row in filtered_df.iterrows():
+                try:
+                    # Datum verarbeiten
                     date_value = row[date_column]
                     
-                    # Datum in das richtige Format konvertieren
-                    if isinstance(date_value, (pd.Timestamp, datetime.datetime, datetime.date)):
-                        datum = date_value.strftime('%d.%m.%Y')
-                    else:
-                        try:
-                            # Versuche als Datum zu parsen
-                            datum_obj = pd.to_datetime(date_value)
-                            datum = datum_obj.strftime('%d.%m.%Y')
-                        except:
-                            # Wenn Parsing fehlschlägt, den String direkt verwenden
-                            datum = str(date_value)
-                    
-                    # Stunden extrahieren
-                    hours_value = row[hours_column]
-                    
-                    # Zeilen ohne Stunden überspringen
-                    if pd.isna(hours_value):
+                    # Verschiedene Datumsformate behandeln
+                    if pd.isna(date_value):
+                        error_rows += 1
                         continue
                     
+                    if isinstance(date_value, (pd.Timestamp, datetime.datetime, datetime.date)):
+                        date_str = date_value.strftime('%d.%m.%Y')
+                    elif isinstance(date_value, str):
+                        try:
+                            # Versuche zu parsen
+                            parsed_date = pd.to_datetime(date_value)
+                            date_str = parsed_date.strftime('%d.%m.%Y')
+                        except:
+                            # Falls nicht parse-bar, prüfe auf gängige Formate
+                            import re
+                            # Mögliche Datumsformate: DD.MM.YYYY, MM/DD/YYYY, YYYY-MM-DD
+                            if re.match(r'\d{1,2}[./-]\d{1,2}[./-]\d{2,4}', date_value):
+                                # Plausibles Datumsformat, behalten
+                                date_str = date_value
+                            else:
+                                # Kein plausibles Datum, überspringen
+                                error_rows += 1
+                                continue
+                    else:
+                        # Fallback für numerische Werte (Excel-Datum)
+                        try:
+                            excel_date = datetime.datetime(1899, 12, 30) + datetime.timedelta(days=int(date_value))
+                            date_str = excel_date.strftime('%d.%m.%Y')
+                        except:
+                            # Kein konvertierbarer Wert
+                            error_rows += 1
+                            continue
+                    
+                    # Stunden verarbeiten mit mehr Fehlertoleranz
+                    hours_value = row[hours_column]
+                    
+                    # Überspringe Zeilen ohne Stundenwerte
+                    if pd.isna(hours_value):
+                        error_rows += 1
+                        continue
+                    
+                    # Konvertierung der Stunden mit mehr Fehlertoleranz
                     try:
-                        # In Float und dann in String konvertieren
+                        # Bereinige und konvertiere
                         if isinstance(hours_value, str):
-                            hours_value = hours_value.replace(',', '.')
+                            # Verschiedene Formate bereinigen
+                            cleaned_hours = hours_value.replace(',', '.').strip()
+                            # Entferne alles außer Ziffern und Punkt
+                            import re
+                            cleaned_hours = re.sub(r'[^\d.]', '', cleaned_hours)
+                            stunden_float = float(cleaned_hours) if cleaned_hours else 0
+                        else:
+                            stunden_float = float(hours_value)
                         
-                        stunden_float = float(hours_value)
+                        # Ignoriere unplausible Werte
+                        if stunden_float <= 0 or stunden_float > 24:
+                            error_rows += 1
+                            continue
+                        
                         stunden = str(stunden_float)
                         
-                        # Kapazität berechnen: Stunden >= 8 entsprechen einer Kapazität von 1
+                        # Kapazität berechnen
                         if stunden_float >= 8:
                             kapazitaet = "1.0"
                         else:
-                            # Anteilige Kapazität berechnen (Stunden/8)
                             kapazitaet = str(round(stunden_float / 8, 2))
                         
-                    except ValueError:
+                        # Daten zur Liste hinzufügen
+                        processed_data.append([selected_member_id, date_str, stunden, kapazitaet])
+                        successful_rows += 1
+                        
+                    except (ValueError, TypeError) as e:
+                        error_rows += 1
                         continue
-                    
-                    # Daten zur Liste hinzufügen [ID, DATUM, STUNDEN, KAPAZITÄT]
-                    processed_data.append([selected_member_id, datum, stunden, kapazitaet])
                 
-                except Exception:
+                except Exception as row_error:
+                    error_rows += 1
                     continue
             
-            return processed_data
+            # Zusammenfassung
+            if successful_rows > 0:
+                log_info(f"Import erfolgreich: {successful_rows} Einträge verarbeitet, {error_rows} übersprungen")
+                return processed_data
+            else:
+                log_info(f"Keine gültigen Daten gefunden! Alle {error_rows} Zeilen fehlerhaft.", is_error=True)
+                return []
         
         except Exception as e:
-            self._show_status(f"Fehler bei der Dateiverarbeitung: {e}", error=True)
+            log_info(f"Kritischer Fehler: {str(e)}", is_error=True)
             return []
         
         finally:
@@ -1497,7 +1519,6 @@ class ImportModal(ctk.CTkToplevel):
                         os.remove(temp_file)
                     except:
                         pass
-
    
     
     
