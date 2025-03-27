@@ -770,7 +770,7 @@ class MainView(ctk.CTkFrame):
             capacity_label.grid(row=0, column=3, padx=5, pady=3, sticky="e")
 
     def _update_calendar(self):
-        """Aktualisiert den Tageskalender für den ausgewählten Sprint"""
+        """Aktualisiert den Tageskalender für den ausgewählten Sprint mit PD-Begrenzung"""
         # Bestehenden Kalender leeren
         for widget in self.calendar_frame.winfo_children():
             widget.destroy()
@@ -811,12 +811,15 @@ class MainView(ctk.CTkFrame):
             no_calendar_label.pack(pady=20)
             return
         
-        # Liste der Mitarbeiter-IDs im Projektteam erstellen
+        # Liste der Mitarbeiter-IDs im Projektteam erstellen und PD-Werte speichern
         team_member_ids = set()
+        member_pd = {}  # Dictionary für PD-Werte
         for member in team_members:
             member_id = member.get("id", "")
             if member_id:  # Nur gültige IDs hinzufügen
                 team_member_ids.add(member_id)
+                # PD-Wert des Mitarbeiters speichern
+                member_pd[member_id] = float(member.get("fte", 1.0))
         
         # Kapazitätsdaten nach Datum und Mitarbeiter organisieren
         daily_capacity = {}
@@ -891,11 +894,13 @@ class MainView(ctk.CTkFrame):
         for row, member in enumerate(team_members, 1):
             member_id = member.get("id", "")
             member_name = member.get("name", "Unbekannt")
+            # PD-Wert des Mitarbeiters holen
+            pd = member_pd.get(member_id, 1.0)
             
-            # Mitarbeiter-Namen
+            # Mitarbeiter-Namen mit angezeigtem PD-Wert
             name_header = ctk.CTkLabel(
                 calendar_table,
-                text=member_name,
+                text=f"{member_name} (PD: {pd})",
                 height=cell_height,
                 anchor="w",
                 font=ctk.CTkFont(weight="bold")
@@ -922,13 +927,17 @@ class MainView(ctk.CTkFrame):
                 key = (member_id, day.strftime('%d.%m.%Y'))
                 capacity = daily_capacity.get(key, None)
                 
-                # Farbe basierend auf Kapazität
+                # Farbe basierend auf Kapazität und PD-Vergleich
                 if capacity is None:
                     # Kein Eintrag: Rot
                     bg_color = ("red", "dark red")
                     text = "X"
+                elif capacity > pd:
+                    # Kapazität überschreitet PD: Orange (Warnung)
+                    bg_color = ("orange", "dark orange")
+                    text = f"{capacity:.1f}*"  # Sternchen als Marker für Überschreitung
                 elif capacity >= 1.0:
-                    # Kapazität 1 oder mehr: Grün
+                    # Volle Kapazität aber unter PD: Grün
                     bg_color = ("green", "dark green")
                     text = f"{capacity:.1f}"
                 else:
@@ -945,6 +954,47 @@ class MainView(ctk.CTkFrame):
                 )
                 cell.grid(row=row, column=col, padx=1, pady=1, sticky="nsew")
         
+        # Legende hinzufügen
+        legend_frame = ctk.CTkFrame(calendar_scroll)
+        legend_frame.pack(fill="x", padx=5, pady=(15, 5))
+        
+        # Titel für Legende
+        legend_title = ctk.CTkLabel(
+            legend_frame,
+            text="Legende:",
+            font=ctk.CTkFont(weight="bold")
+        )
+        legend_title.pack(anchor="w", padx=5, pady=5)
+        
+        # Legende-Einträge
+        legend_items = [
+            ("WE", "Wochenende", ("gray80", "gray40")),
+            ("X", "Keine Daten", ("red", "dark red")),
+            ("1.0", "Volle Kapazität", ("green", "dark green")),
+            ("0.5", "Teilkapazität", ("yellow", "#B8860B")),
+            ("1.0*", "Über PD-Limit", ("orange", "dark orange"))
+        ]
+        
+        for text, desc, color in legend_items:
+            item_frame = ctk.CTkFrame(legend_frame)
+            item_frame.pack(fill="x", padx=5, pady=2)
+            
+            sample = ctk.CTkLabel(
+                item_frame,
+                text=text,
+                width=40,
+                height=20,
+                fg_color=color
+            )
+            sample.pack(side="left", padx=5)
+            
+            description = ctk.CTkLabel(
+                item_frame,
+                text=desc,
+                anchor="w"
+            )
+            description.pack(side="left", padx=5, fill="x", expand=True)
+        
         # Status aktualisieren
         self.show_message(f"Kalender für Sprint '{self.selected_sprint.get('sprint_name', 'Unbenannt')}' aktualisiert")
 
@@ -952,7 +1002,8 @@ class MainView(ctk.CTkFrame):
     def _get_sprint_capacity_data(self):
         """
         Ermittelt die Kapazitätsdaten für den ausgewählten Sprint,
-        aber nur für Mitglieder des aktuellen Projektteams
+        aber nur für Mitglieder des aktuellen Projektteams.
+        Begrenzt die Kapazität auf den FTE-Wert aus der project.json.
         
         Returns:
             list: Liste von Tupeln (member_id, hours, capacity)
@@ -966,10 +1017,15 @@ class MainView(ctk.CTkFrame):
         
         # Liste der Mitarbeiter-IDs im Projektteam erstellen
         team_member_ids = set()
+        # Dictionary für FTE-Werte erstellen
+        member_fte = {}
+        
         for member in self.selected_project.get("teilnehmer", []):
             member_id = member.get("id", "")
             if member_id:  # Nur gültige IDs hinzufügen
                 team_member_ids.add(member_id)
+                # FTE-Wert des Mitarbeiters speichern
+                member_fte[member_id] = float(member.get("fte", 1.0))
         
         # Kapazitätsdaten filtern - nur für Teammitglieder
         member_hours = {}
@@ -986,13 +1042,19 @@ class MainView(ctk.CTkFrame):
                 
                 # Prüfen, ob das Datum im Sprint-Zeitraum liegt
                 if start_date <= datum <= end_date:
-                    # Stunden für Mitarbeiter summieren
+                    # FTE-Wert des Mitarbeiters (Fallback auf 1.0)
+                    fte = member_fte.get(member_id, 1.0)
+                    
+                    # Kapazität auf FTE begrenzen
+                    limited_capacity = min(capacity, fte)
+                    
+                    # Stunden und Kapazität für Mitarbeiter summieren
                     if member_id in member_hours:
                         member_hours[member_id] += hours
-                        member_capacity[member_id] += capacity
+                        member_capacity[member_id] += limited_capacity
                     else:
                         member_hours[member_id] = hours
-                        member_capacity[member_id] = capacity
+                        member_capacity[member_id] = limited_capacity
             except:
                 # Bei Fehlern beim Datum-Parsing überspringen
                 continue
