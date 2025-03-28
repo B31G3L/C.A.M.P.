@@ -10,6 +10,7 @@ from src.ui.dialogs.data_modal import DataModal
 from src.ui.dialogs.camp_manager_modal import CAMPManagerModal
 from src.ui.dialogs.import_modal import ImportModal
 from src.ui.dialogs.markdown_modal import MarkdownModal
+from src.ui.dialogs.loading_dialog import LoadingDialog  # Import hinzugefügt
 from src.services.markdown_service import MarkdownService
 from datetime import datetime
 
@@ -97,8 +98,8 @@ class CAMPApp:
         # Warte, bis das Modal geschlossen wird
         self.root.wait_window(markdown_modal)
         
-        # Aktualisiere die Statusanzeige in der Hauptansicht
-        self.main_view.show_message("Confluence Wiki wurde erstellt")
+        # Aktualisiere die Hauptansicht nach dem Schließen des Modals
+        self.refresh_main_view()
             
     def _get_toolbar_callbacks(self):
         """
@@ -129,8 +130,8 @@ class CAMPApp:
         # Warte, bis das Modal geschlossen wird
         self.root.wait_window(data_modal)
         
-        # Aktualisiere die Statusanzeige in der Hauptansicht
-        self.main_view.show_message("Daten wurden angezeigt")
+        # Aktualisiere die Hauptansicht nach dem Schließen des Modals
+        self.refresh_main_view()
     
     
     def _show_camp_manager(self):
@@ -141,8 +142,8 @@ class CAMPApp:
         # Warte, bis das Modal geschlossen wird
         self.root.wait_window(manager_modal)
         
-        # Aktualisiere die Statusanzeige in der Hauptansicht
-        self.main_view.show_message("CAMP Manager wurde geschlossen")
+        # Aktualisiere die Hauptansicht nach dem Schließen des Modals
+        self.refresh_main_view()
 
     def _show_import_data(self):
         """Zeigt das Import-Daten-Modal an"""
@@ -152,5 +153,39 @@ class CAMPApp:
         # Warte, bis das Modal geschlossen wird
         self.root.wait_window(import_modal)
         
-        # Aktualisiere die Statusanzeige in der Hauptansicht
-        self.main_view.show_message("Daten-Import wurde geschlossen")
+        # Aktualisiere die Hauptansicht nach dem Schließen des Modals
+        self.refresh_main_view()
+        
+    def refresh_main_view(self):
+        """Aktualisiert die Hauptansicht mit Ladeindikator"""
+        # Zeige Ladeindikator
+        loading_dialog = LoadingDialog(self.root, "Daten werden aktualisiert...")
+        
+        # Stelle sicher, dass der Dialog gerendert wird
+        self.root.update()
+        
+        # Daten aktualisieren
+        self.main_view.refresh_data()
+        
+        # Ladeindikator schließen
+        loading_dialog.destroy()
+        
+        # Statusanzeige aktualisieren
+        self.main_view.show_message("Daten wurden aktualisiert")
+        
+    def show_startup_info(self):
+        """Zeigt das Startinfo-Fenster und lädt die Daten"""
+        # Zeige Startinformation
+        loading_dialog = LoadingDialog(self.root, "Anwendung wird gestartet und Daten werden geladen...")
+        
+        # Stelle sicher, dass der Dialog gerendert wird
+        self.root.update()
+        
+        # Daten aktualisieren
+        self.main_view.refresh_data()
+        
+        # Ladeinfo schließen
+        loading_dialog.destroy()
+        
+        # Statusanzeige aktualisieren
+        self.main_view.show_message("Anwendung bereit")

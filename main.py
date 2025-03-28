@@ -34,5 +34,9 @@ if __name__ == "__main__":
     root = ctk.CTk()
     app = CAMPApp(root)
     
+    # Verzögerte Ausführung der Startsequenz nach dem Start der Anwendungsschleife
+    # Dies zeigt das Info-Fenster an und aktualisiert die Daten
+    root.after(100, app.show_startup_info)
+    
     # Starte die Hauptschleife
     root.mainloop()
