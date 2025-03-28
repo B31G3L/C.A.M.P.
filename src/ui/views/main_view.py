@@ -532,7 +532,7 @@ class MainView(ctk.CTkFrame):
         total_capacity = sum(capacity for _, _, capacity in sprint_data)
         
         # Fester Umrechnungsfaktor
-        umrechnungsfaktor = 1.4
+        umrechnungsfaktor = 1.5
         
         # Berechnete Story Points
         berechnete_sp = total_capacity / umrechnungsfaktor if total_capacity > 0 else 0

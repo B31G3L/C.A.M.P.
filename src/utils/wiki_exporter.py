@@ -33,7 +33,7 @@ class WikiExporter:
         
         # Berechne die Gesamtkapazität und geschätzte Story Points
         total_capacity = sum(capacity for _, _, capacity in sprint_capacity_data)
-        umrechnungsfaktor = 1.4  # Fester Umrechnungsfaktor
+        umrechnungsfaktor = 1.5  # Fester Umrechnungsfaktor
         berechnete_sp = total_capacity / umrechnungsfaktor if total_capacity > 0 else 0
         
         # Sprint Details mit den gewünschten Informationen

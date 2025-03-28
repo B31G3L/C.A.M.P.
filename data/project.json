@@ -62,6 +62,12 @@
                     "name": "Martina Dohr",
                     "rolle": "DEV",
                     "fte": 0.5
+                },
+                {
+                    "id": "Qarib, Fariba",
+                    "name": "Fariba Qarib",
+                    "rolle": "DEV",
+                    "fte": 1.0
                 }
             ],
             "sprints": [
@@ -96,7 +102,7 @@
                 {
                     "sprint_name": "EVE R25B - Sprint 4",
                     "start": "30.04.2025",
-                    "ende": "24.05.2025",
+                    "ende": "20.05.2025",
                     "confimed_story_points": 0,
                     "delivered_story_points": 0
                 }
