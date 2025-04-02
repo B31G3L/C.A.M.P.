@@ -55,17 +55,17 @@ jobs:
         VERS=$(python -c "from src.utils.version import __version__; print(__version__)")
         echo "version=$VERS" >> $GITHUB_OUTPUT
     - name: Create assets directory
+      shell: pwsh
       run: |
-        mkdir -p assets
+        New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/assets"
     - name: Create simple icon
+      shell: python
       run: |
-        python -c "
         from PIL import Image, ImageDraw
         img = Image.new('RGBA', (256, 256), color=(30, 120, 200, 255))
         draw = ImageDraw.Draw(img)
         draw.ellipse((50, 50, 206, 206), fill=(40, 160, 230, 255))
         img.save('assets/camp_icon.ico')
-        "
     - name: Manual PyInstaller Build
       run: |
         pyinstaller --clean --name="CAMP" --windowed --icon=assets/camp_icon.ico main.py
