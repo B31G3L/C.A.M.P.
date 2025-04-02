@@ -78,7 +78,7 @@ jobs:
         powershell Compress-Archive -Path CAMP -DestinationPath "CAMP-${{ steps.extract_version.outputs.version }}-win64.zip"
         cd ..
     - name: Upload build artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: camp-windows
         path: dist/CAMP-${{ steps.extract_version.outputs.version }}-win64.zip
@@ -138,7 +138,7 @@ jobs:
           "dist/CAMP-${{ steps.extract_version.outputs.version }}-macos.dmg" \
           "dmg-build/"
     - name: Upload build artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: camp-macos
         path: dist/CAMP-${{ steps.extract_version.outputs.version }}-macos.dmg
