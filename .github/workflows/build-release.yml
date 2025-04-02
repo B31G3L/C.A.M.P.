@@ -163,12 +163,12 @@ jobs:
         echo "version=$VERS" >> $GITHUB_OUTPUT
         echo "VERSION=$VERS" >> $GITHUB_ENV
     - name: Download Windows artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: camp-windows
         path: artifacts/windows
     - name: Download macOS artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: camp-macos
         path: artifacts/macos
