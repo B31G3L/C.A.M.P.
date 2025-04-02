@@ -6,3 +6,6 @@ markdown>=3.4.0
 pyinstaller>=5.7.0
 pytest>=7.0.0
 flake8>=4.0.0
+pillow>=9.0.0
+# Für Windows Single-Instance-Funktionalität
+pywin32>=300.0; platform_system=="Windows"

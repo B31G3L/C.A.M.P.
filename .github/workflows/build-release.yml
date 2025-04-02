@@ -1,0 +1,208 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+
+jobs:
+  # Job zum Testen der Anwendung
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        pip install -r requirements.txt
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test with pytest
+      run: |
+        pytest
+
+  # Job zum Bauen für Windows
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller pillow
+    - name: Extract version
+      id: extract_version
+      run: |
+        $version = (python -c "from src.utils.version import __version__; print(__version__)")
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+    - name: Create assets directory
+      run: |
+        mkdir -p assets
+    - name: Build application
+      run: |
+        python build_app.py
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: camp-windows
+        path: CAMP-${{ steps.extract_version.outputs.VERSION }}-win64.zip
+
+  # Job zum Bauen für macOS
+  build-macos:
+    needs: test
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller pillow
+    - name: Extract version
+      id: extract_version
+      run: |
+        version=$(python -c "from src.utils.version import __version__; print(__version__)")
+        echo "VERSION=$version" >> $GITHUB_OUTPUT
+    - name: Create assets directory
+      run: |
+        mkdir -p assets
+    - name: Build application
+      run: |
+        python build_app.py
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: camp-macos
+        path: CAMP-${{ steps.extract_version.outputs.VERSION }}-macos.dmg
+
+  # Job zum Erstellen des Releases
+  create-release:
+    needs: [build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Extract version
+      id: extract_version
+      run: |
+        version=$(python -c "from src.utils.version import __version__; print(__version__)")
+        echo "VERSION=$version" >> $GITHUB_ENV
+        echo "VERSION=$version" >> $GITHUB_OUTPUT
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: CAMP v${{ steps.extract_version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        files: |
+          camp-windows/CAMP-${{ steps.extract_version.outputs.VERSION }}-win64.zip
+          camp-macos/CAMP-${{ steps.extract_version.outputs.VERSION }}-macos.dmg
+        body: |
+          # CAMP v${{ steps.extract_version.outputs.VERSION }}
+          
+          Release für CAMP v${{ steps.extract_version.outputs.VERSION }}.
+          
+          ## Änderungen
+          
+          - Initiales Release
+          - Automatisches Update-System
+          - Windows- und macOS-Unterstützung
+          
+          ## Downloads
+          
+          - Windows: CAMP-${{ steps.extract_version.outputs.VERSION }}-win64.zip
+          - macOS: CAMP-${{ steps.extract_version.outputs.VERSION }}-macos.dmg
+          
+          ## Installation
+          
+          ### Windows
+          - Laden Sie die ZIP-Datei herunter und entpacken Sie sie
+          - Führen Sie die CAMP.exe aus
+          
+          ### macOS
+          - Laden Sie die DMG-Datei herunter und öffnen Sie sie
+          - Ziehen Sie die CAMP.app in den Applications-Ordner
+
+  # Job zum Aktualisieren der Version
+  update-version:
+    needs: create-release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: main
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Increment version
+      run: |
+        # Extrahiere aktuelle Version
+        current_version=$(python -c "from src.utils.version import __version__; print(__version__)")
+        
+        # Teile die Version in Major, Minor und Patch auf
+        IFS='.' read -r -a version_parts <<< "$current_version"
+        major="${version_parts[0]}"
+        minor="${version_parts[1]}"
+        patch="${version_parts[2]}"
+        
+        # Erhöhe die Patch-Version
+        patch=$((patch + 1))
+        new_version="$major.$minor.$patch"
+        
+        # Aktualisiere die Versionsdatei
+        sed -i "s/__version__ = \"$current_version\"/__version__ = \"$new_version\"/" src/utils/version.py
+        
+        # Aktualisiere Release-Datum
+        today=$(date +%Y-%m-%d)
+        sed -i "s/__release_date__ = \".*\"/__release_date__ = \"$today\"/" src/utils/version.py
+        
+        # Ändere Versionsinformationen in build_app.spec
+        if [ -f "build_app.spec" ]; then
+          sed -i "s/'CFBundleShortVersionString': '.*'/'CFBundleShortVersionString': '$new_version'/" build_app.spec
+        fi
+        
+        echo "Updated version from $current_version to $new_version"
+        echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+    - name: Commit version update
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git add src/utils/version.py
+        git add build_app.spec || true
+        git commit -m "Bump version to $NEW_VERSION [skip ci]"
+        git push
