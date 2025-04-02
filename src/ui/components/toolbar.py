@@ -57,6 +57,22 @@ class Toolbar(ctk.CTkFrame):
             text="Create Confluence",
             command=self._on_create_markup
         )
+        
+        # 5. Button: "Auf Updates prüfen"
+        self.update_btn = ctk.CTkButton(
+            self,
+            text="Updates",
+            command=self._on_check_updates,
+            width=90
+        )
+        
+        # 6. Button: "Über"
+        self.about_btn = ctk.CTkButton(
+            self,
+            text="Über",
+            command=self._on_show_about,
+            width=70
+        )
     
     def _setup_layout(self):
         """Richtet das Layout der UI-Elemente ein"""
@@ -65,8 +81,12 @@ class Toolbar(ctk.CTkFrame):
         self.import_data_btn.pack(side="left", padx=5, pady=5)
         self.camp_manager_btn.pack(side="left", padx=5, pady=5)
         
-        # "Create Confluence" Button ganz nach rechts
-        self.markup_btn.pack(side="right", padx=(5, 10), pady=5)
+        # Rechte Seite für Hilfe- und Zusatzfunktionen
+        self.about_btn.pack(side="right", padx=(5, 10), pady=5)
+        self.update_btn.pack(side="right", padx=5, pady=5)
+        
+        # "Create Confluence" Button etwas in der Mitte
+        self.markup_btn.pack(side="right", padx=5, pady=5)
 
     # Event-Handler-Methoden
     
@@ -88,5 +108,14 @@ class Toolbar(ctk.CTkFrame):
     def _on_create_markup(self):
         """Wird aufgerufen, wenn der 'Create Confluence' Button geklickt wird"""
         if "create_markup" in self.callbacks:
-            print(self.callbacks)
             self.callbacks["create_markup"]()
+    
+    def _on_check_updates(self):
+        """Wird aufgerufen, wenn der 'Auf Updates prüfen' Button geklickt wird"""
+        if "check_updates" in self.callbacks:
+            self.callbacks["check_updates"]()
+    
+    def _on_show_about(self):
+        """Wird aufgerufen, wenn der 'Über' Button geklickt wird"""
+        if "show_about" in self.callbacks:
+            self.callbacks["show_about"]()

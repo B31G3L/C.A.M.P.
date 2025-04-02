@@ -3,6 +3,7 @@ Hauptanwendungsklasse für CAMP
 Koordiniert alle Komponenten und enthält die Hauptlogik
 """
 import os
+import tkinter as tk
 import customtkinter as ctk
 from src.ui.components.toolbar import Toolbar
 from src.ui.views.main_view import MainView
@@ -10,8 +11,11 @@ from src.ui.dialogs.data_modal import DataModal
 from src.ui.dialogs.camp_manager_modal import CAMPManagerModal
 from src.ui.dialogs.import_modal import ImportModal
 from src.ui.dialogs.markdown_modal import MarkdownModal
-from src.ui.dialogs.loading_dialog import LoadingDialog  # Import hinzugefügt
+from src.ui.dialogs.loading_dialog import LoadingDialog
+from src.ui.dialogs.about_dialog import AboutDialog
 from src.services.markdown_service import MarkdownService
+from src.utils.updater import check_for_updates_on_startup, show_update_dialog
+from src.utils.version import __version__, __app_name__, __release_date__
 from datetime import datetime
 
 
@@ -27,7 +31,7 @@ class CAMPApp:
             root: Das Hauptfenster (CTk-Root)
         """
         self.root = root
-        self.root.title("CAMP - Capacity Analysis & Management Planner")
+        self.root.title(f"{__app_name__} - v{__version__}")
         self.root.geometry("1280x960")
         
         # Konfiguration
@@ -44,6 +48,9 @@ class CAMPApp:
         
         # Registriere Event-Handler
         self._register_event_handlers()
+        
+        # Prüfe auf Updates beim Start (mit Verzögerung)
+        self.root.after(3000, lambda: check_for_updates_on_startup(self.root))
     
     def _ensure_data_directory(self):
         """Stellt sicher, dass das Datenverzeichnis existiert"""
@@ -74,6 +81,54 @@ class CAMPApp:
         self.root.bind("<Control-s>", lambda e: self._save_project())
         self.root.bind("<Control-o>", lambda e: self._open_project())
         self.root.bind("<F5>", lambda e: self._refresh_data())
+        self.root.bind("<Control-u>", lambda e: self._check_for_updates())
+        
+        # Menü-Einträge
+        self._create_menu()
+    
+    def _create_menu(self):
+        """Erstellt das Menü für die Anwendung"""
+        # Hauptmenüzeile
+        menubar = tk.Menu(self.root)
+        
+        # Datei-Menü
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Daten anzeigen", command=self._show_data)
+        file_menu.add_command(label="Import Daten", command=self._show_import_data)
+        file_menu.add_separator()
+        file_menu.add_command(label="Beenden", command=self._on_close)
+        menubar.add_cascade(label="Datei", menu=file_menu)
+        
+        # Projekt-Menü
+        project_menu = tk.Menu(menubar, tearoff=0)
+        project_menu.add_command(label="CAMP Manager", command=self._show_camp_manager)
+        project_menu.add_command(label="Create Confluence", command=self._create_markup)
+        menubar.add_cascade(label="Projekt", menu=project_menu)
+        
+        # Hilfe-Menü
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Auf Updates prüfen", command=self._check_for_updates)
+        help_menu.add_command(label="Über CAMP", command=self._show_about)
+        menubar.add_cascade(label="Hilfe", menu=help_menu)
+        
+        # Menü zur Anwendung hinzufügen
+        self.root.config(menu=menubar)
+
+    def _check_for_updates(self):
+        """Prüft manuell auf Updates"""
+        show_update_dialog(self.root)
+    
+    def _show_about(self):
+        """Zeigt den Über-Dialog an"""
+        about_dialog = AboutDialog(
+            self.root, 
+            app_name=__app_name__, 
+            version=__version__, 
+            release_date=__release_date__
+        )
+        
+        # Warte, bis der Dialog geschlossen wird
+        self.root.wait_window(about_dialog)
 
     def _create_markup(self):
         """Generiert Confluence Wiki-Text basierend auf den aktuellen Daten und zeigt ihn in einem Modal an"""
@@ -113,7 +168,9 @@ class CAMPApp:
             "show_data": self._show_data,
             "import_data": self._show_import_data,
             "create_markup": self._create_markup,
-            "camp_manager": self._show_camp_manager
+            "camp_manager": self._show_camp_manager,
+            "check_updates": self._check_for_updates,
+            "show_about": self._show_about
         }
     
     # Event-Handler-Methoden

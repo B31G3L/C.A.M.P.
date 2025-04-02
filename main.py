@@ -8,6 +8,7 @@ import csv  # CSV-Modul importieren
 
 import customtkinter as ctk
 from src.utils.config_loader import load_config
+from src.utils.version import __version__, __app_name__
 
 # Konfiguration laden
 config = load_config()
@@ -26,10 +27,68 @@ if not os.path.exists(kapa_csv_path):
         writer = csv.writer(f, delimiter=';')
         writer.writerow(["ID", "DATUM", "STUNDEN", "KAPAZITÄT"])
 
+# Prüfe auf Single-Instance (nur eine Instanz der Anwendung erlauben)
+def is_app_already_running():
+    """Prüft, ob bereits eine Instanz der Anwendung läuft"""
+    import tempfile
+    import platform
+    import socket
+    import os
+    
+    temp_dir = tempfile.gettempdir()
+    lock_file_path = os.path.join(temp_dir, "camp_app.lock")
+    
+    # Unterschiedliche Implementierung je nach Betriebssystem
+    system = platform.system().lower()
+    
+    if system == "windows":
+        # Windows-spezifische Implementierung mit Named Mutex
+        try:
+            import win32event
+            import win32api
+            import winerror
+            
+            mutex_name = "Global\\CAMP_Application_Mutex"
+            mutex = win32event.CreateMutex(None, 1, mutex_name)
+            if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+                win32api.CloseHandle(mutex)
+                return True
+            return False
+        except ImportError:
+            # win32api nicht verfügbar, Fallback auf Socket
+            pass
+    
+    # Für macOS und Linux (oder als Fallback)
+    try:
+        # Versuche, eine TCP-Socket-Bindung zu erstellen
+        # Port 0 bedeutet, dass das Betriebssystem einen freien Port auswählt
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # SO_REUSEADDR erlaubt das Wiederverwenden des Ports nach einem Absturz
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('localhost', 12345))  # Verwende einen spezifischen Port für die App
+        # Socket bleibt offen, wird beim Beenden geschlossen
+        return False
+    except socket.error:
+        # Port wird bereits verwendet, vermutlich von einer anderen Instanz
+        return True
+
 # Importiere die Hauptanwendungsklasse
 from src.core.app import CAMPApp
 
-if __name__ == "__main__":
+def main():
+    """Hauptfunktion der Anwendung"""
+    # Prüfe, ob bereits eine Instanz läuft
+    if is_app_already_running():
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showwarning(
+            "CAMP bereits gestartet",
+            "Eine Instanz von CAMP läuft bereits. Es kann nur eine Instanz gleichzeitig ausgeführt werden."
+        )
+        sys.exit(0)
+    
     # Erstelle das Hauptfenster
     root = ctk.CTk()
     app = CAMPApp(root)
@@ -40,3 +99,20 @@ if __name__ == "__main__":
     
     # Starte die Hauptschleife
     root.mainloop()
+    
+    # Bereinigung beim Beenden
+    try:
+        import tempfile
+        socket_file = os.path.join(tempfile.gettempdir(), "camp_app_socket")
+        if os.path.exists(socket_file):
+            os.unlink(socket_file)
+    except:
+        pass
+
+if __name__ == "__main__":
+    # Versionsinformationen anzeigen
+    print(f"{__app_name__} v{__version__}")
+    print("Starting application...")
+    
+    # Hauptfunktion aufrufen
+    main()
