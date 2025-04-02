@@ -3,7 +3,7 @@ Versionsinformationen für CAMP
 """
 
 # Aktuelle Version
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __app_name__ = "CAMP - Capacity Analysis & Management Planner"
 __release_date__ = "2025-04-02"
 
