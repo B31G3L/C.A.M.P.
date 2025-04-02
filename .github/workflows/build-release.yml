@@ -45,24 +45,43 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install --upgrade setuptools wheel
         pip install -r requirements.txt
         pip install pyinstaller pillow
     - name: Extract version
       id: extract_version
+      shell: bash
       run: |
-        $version = (python -c "from src.utils.version import __version__; print(__version__)")
-        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        VERS=$(python -c "from src.utils.version import __version__; print(__version__)")
+        echo "version=$VERS" >> $GITHUB_OUTPUT
     - name: Create assets directory
       run: |
         mkdir -p assets
-    - name: Build application
+    - name: Create simple icon
       run: |
-        python build_app.py
-    - name: Upload artifact
+        python -c "
+        from PIL import Image, ImageDraw
+        img = Image.new('RGBA', (256, 256), color=(30, 120, 200, 255))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse((50, 50, 206, 206), fill=(40, 160, 230, 255))
+        img.save('assets/camp_icon.ico')
+        "
+    - name: Manual PyInstaller Build
+      run: |
+        pyinstaller --clean --name="CAMP" --windowed --icon=assets/camp_icon.ico main.py
+        mkdir -p dist/CAMP/config
+        cp config/*.py dist/CAMP/config/
+        cp -r data dist/CAMP/
+    - name: Create ZIP archive
+      run: |
+        cd dist
+        powershell Compress-Archive -Path CAMP -DestinationPath "CAMP-${{ steps.extract_version.outputs.version }}-win64.zip"
+        cd ..
+    - name: Upload build artifact
       uses: actions/upload-artifact@v3
       with:
         name: camp-windows
-        path: CAMP-${{ steps.extract_version.outputs.VERSION }}-win64.zip
+        path: dist/CAMP-${{ steps.extract_version.outputs.version }}-win64.zip
 
   # Job zum Bauen für macOS
   build-macos:
@@ -78,24 +97,51 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install --upgrade setuptools wheel
         pip install -r requirements.txt
         pip install pyinstaller pillow
     - name: Extract version
       id: extract_version
       run: |
-        version=$(python -c "from src.utils.version import __version__; print(__version__)")
-        echo "VERSION=$version" >> $GITHUB_OUTPUT
+        VERS=$(python -c "from src.utils.version import __version__; print(__version__)")
+        echo "version=$VERS" >> $GITHUB_OUTPUT
     - name: Create assets directory
       run: |
         mkdir -p assets
-    - name: Build application
+    - name: Create simple icon
       run: |
-        python build_app.py
-    - name: Upload artifact
+        python -c "
+        from PIL import Image, ImageDraw
+        img = Image.new('RGBA', (1024, 1024), color=(30, 120, 200, 255))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse((200, 200, 824, 824), fill=(40, 160, 230, 255))
+        img.save('assets/camp_icon.png')
+        "
+    - name: Manual PyInstaller Build
+      run: |
+        pyinstaller --clean --name="CAMP" --windowed --icon=assets/camp_icon.png main.py
+        mkdir -p dist/CAMP.app/Contents/Resources/config
+        cp -r config/*.py dist/CAMP.app/Contents/Resources/config/
+        cp -r data dist/CAMP.app/Contents/Resources/
+    - name: Create DMG
+      run: |
+        brew install create-dmg
+        mkdir -p dmg-build
+        cp -r dist/CAMP.app dmg-build/
+        create-dmg \
+          --volname "CAMP-${{ steps.extract_version.outputs.version }}" \
+          --volicon "assets/camp_icon.png" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon "CAMP.app" 150 190 \
+          --app-drop-link 450 185 \
+          "dist/CAMP-${{ steps.extract_version.outputs.version }}-macos.dmg" \
+          "dmg-build/"
+    - name: Upload build artifact
       uses: actions/upload-artifact@v3
       with:
         name: camp-macos
-        path: CAMP-${{ steps.extract_version.outputs.VERSION }}-macos.dmg
+        path: dist/CAMP-${{ steps.extract_version.outputs.version }}-macos.dmg
 
   # Job zum Erstellen des Releases
   create-release:
@@ -113,25 +159,37 @@ jobs:
     - name: Extract version
       id: extract_version
       run: |
-        version=$(python -c "from src.utils.version import __version__; print(__version__)")
-        echo "VERSION=$version" >> $GITHUB_ENV
-        echo "VERSION=$version" >> $GITHUB_OUTPUT
-    - name: Download all artifacts
+        VERS=$(python -c "from src.utils.version import __version__; print(__version__)")
+        echo "version=$VERS" >> $GITHUB_OUTPUT
+        echo "VERSION=$VERS" >> $GITHUB_ENV
+    - name: Download Windows artifact
       uses: actions/download-artifact@v3
+      with:
+        name: camp-windows
+        path: artifacts/windows
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: camp-macos
+        path: artifacts/macos
+    - name: List artifacts
+      run: |
+        ls -la artifacts/windows
+        ls -la artifacts/macos
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        name: CAMP v${{ steps.extract_version.outputs.VERSION }}
+        name: CAMP v${{ steps.extract_version.outputs.version }}
         draft: false
         prerelease: false
         files: |
-          camp-windows/CAMP-${{ steps.extract_version.outputs.VERSION }}-win64.zip
-          camp-macos/CAMP-${{ steps.extract_version.outputs.VERSION }}-macos.dmg
+          artifacts/windows/CAMP-${{ steps.extract_version.outputs.version }}-win64.zip
+          artifacts/macos/CAMP-${{ steps.extract_version.outputs.version }}-macos.dmg
         body: |
-          # CAMP v${{ steps.extract_version.outputs.VERSION }}
+          # CAMP v${{ steps.extract_version.outputs.version }}
           
-          Release für CAMP v${{ steps.extract_version.outputs.VERSION }}.
+          Release für CAMP v${{ steps.extract_version.outputs.version }}.
           
           ## Änderungen
           
@@ -141,8 +199,8 @@ jobs:
           
           ## Downloads
           
-          - Windows: CAMP-${{ steps.extract_version.outputs.VERSION }}-win64.zip
-          - macOS: CAMP-${{ steps.extract_version.outputs.VERSION }}-macos.dmg
+          - Windows: CAMP-${{ steps.extract_version.outputs.version }}-win64.zip
+          - macOS: CAMP-${{ steps.extract_version.outputs.version }}-macos.dmg
           
           ## Installation
           
@@ -191,11 +249,6 @@ jobs:
         today=$(date +%Y-%m-%d)
         sed -i "s/__release_date__ = \".*\"/__release_date__ = \"$today\"/" src/utils/version.py
         
-        # Ändere Versionsinformationen in build_app.spec
-        if [ -f "build_app.spec" ]; then
-          sed -i "s/'CFBundleShortVersionString': '.*'/'CFBundleShortVersionString': '$new_version'/" build_app.spec
-        fi
-        
         echo "Updated version from $current_version to $new_version"
         echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
     - name: Commit version update
@@ -203,6 +256,5 @@ jobs:
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
         git add src/utils/version.py
-        git add build_app.spec || true
         git commit -m "Bump version to $NEW_VERSION [skip ci]"
         git push
